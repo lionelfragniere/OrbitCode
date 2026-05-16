@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Zap, ChevronDown, Check, Sparkles } from 'lucide-react';
 import { MODEL_REGISTRY, type ModelInfo } from '@/lib/models';
 
@@ -11,17 +11,30 @@ interface ModelSelectorProps {
 
 export default function ModelSelector({ selectedModel, onSelect }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const current = MODEL_REGISTRY.find((m) => m.id === selectedModel) || MODEL_REGISTRY[0];
+  const [customModel, setCustomModel] = useState(selectedModel);
+  const current = MODEL_REGISTRY.find((m) => m.id === selectedModel);
+  const displayName = current?.name || selectedModel || 'Custom model';
+
+  useEffect(() => {
+    setCustomModel(selectedModel);
+  }, [selectedModel]);
+
+  const applyCustomModel = () => {
+    const value = customModel.trim();
+    if (!value) return;
+    onSelect(value);
+    setIsOpen(false);
+  };
 
   return (
     <div className="model-selector" style={{ position: 'relative' }}>
       <button
         className="model-selector__trigger"
         onClick={() => setIsOpen(!isOpen)}
-        title={`Current model: ${current.name}`}
+        title={`Current model: ${displayName}`}
       >
         <Zap size={11} />
-        <span>{current.name}</span>
+        <span>{displayName}</span>
         <ChevronDown size={10} style={{ opacity: 0.5 }} />
       </button>
 
@@ -34,7 +47,30 @@ export default function ModelSelector({ selectedModel, onSelect }: ModelSelector
           <div className="model-selector__dropdown">
             <div className="model-selector__dropdown-header">
               <Sparkles size={12} style={{ color: 'var(--accent-primary)' }} />
-              Select Model
+              Select or enter model
+            </div>
+            <div style={{ padding: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+              <input
+                className="field__input"
+                value={customModel}
+                onChange={(event) => setCustomModel(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applyCustomModel();
+                  }
+                }}
+                placeholder="Type any model ID, e.g. gpt-5.4"
+                style={{ width: '100%', fontSize: 11, marginBottom: 6 }}
+              />
+              <button
+                className="btn btn--ghost"
+                type="button"
+                onClick={applyCustomModel}
+                style={{ width: '100%', justifyContent: 'center', fontSize: 11 }}
+              >
+                Use typed model
+              </button>
             </div>
             {MODEL_REGISTRY.map((model: ModelInfo) => (
               <button

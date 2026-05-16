@@ -10,6 +10,13 @@ interface SetupScreenProps {
   onBrowseFolder: () => void;
 }
 
+function defaultModelForProvider(providerId: string): string {
+  if (providerId === 'openai') return 'gpt-4.1';
+  if (providerId === 'anthropic') return 'claude-sonnet-4-5';
+  if (providerId === 'gemini-api' || providerId === 'vertex-ai') return 'gemini-2.5-flash';
+  return 'qwen3:8b';
+}
+
 export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupScreenProps) {
   const [draft, setDraft] = useState<AppSettings>({
     ...DEFAULT_SETTINGS,
@@ -84,13 +91,16 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
           <select
             className="field__select"
             value={draft.selectedProviderId}
-            onChange={(e) => setDraft({
-              ...draft,
-              providerId: e.target.value,
-              selectedProviderId: e.target.value,
-              providerKind: e.target.value === 'vertex-ai' ? 'vertex' : e.target.value === 'openai' ? 'openai' : e.target.value === 'anthropic' ? 'anthropic' : e.target.value === 'gemini-api' ? 'gemini' : 'ollama',
-              selectedModel: e.target.value === 'local-ollama' ? 'qwen3:8b' : draft.selectedModel,
-            })}
+            onChange={(e) => {
+              const providerId = e.target.value;
+              setDraft({
+                ...draft,
+                providerId,
+                selectedProviderId: providerId,
+                providerKind: providerId === 'vertex-ai' ? 'vertex' : providerId === 'openai' ? 'openai' : providerId === 'anthropic' ? 'anthropic' : providerId === 'gemini-api' ? 'gemini' : 'ollama',
+                selectedModel: defaultModelForProvider(providerId),
+              });
+            }}
           >
             <option value="local-ollama">Ollama Local (recommended)</option>
             <option value="openai">OpenAI API</option>
@@ -100,6 +110,24 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
           </select>
           <span className="field__hint" style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>
             API keys are configured later in Settings and stored encrypted locally.
+          </span>
+        </div>
+
+        <div className="field">
+          <label className="field__label">
+            <Zap size={13} />
+            Model ID
+            <span className="field__hint">(editable)</span>
+          </label>
+          <input
+            className="field__input"
+            type="text"
+            placeholder="Type any model ID, e.g. gpt-5.4"
+            value={draft.selectedModel}
+            onChange={(e) => setDraft({ ...draft, selectedModel: e.target.value })}
+          />
+          <span className="field__hint" style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>
+            Use the exact model name supported by your provider. Presets are only starting points.
           </span>
         </div>
 

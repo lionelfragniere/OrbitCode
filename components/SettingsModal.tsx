@@ -273,7 +273,19 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
                 <label className="field__label">
                   <Sparkles size={13} />
                   AI Model
+                  <span className="field__hint">(type any model your provider supports)</span>
                 </label>
+                <input
+                  className="field__input"
+                  type="text"
+                  value={draft.selectedModel}
+                  onChange={(e) => updateField('selectedModel', e.target.value)}
+                  placeholder="gpt-5.4, gpt-5.5, claude-sonnet-4-5, qwen3:8b..."
+                  style={{ marginBottom: '8px' }}
+                />
+                <div style={{ fontSize: '10px', color: 'var(--text-disabled)', marginBottom: '8px', lineHeight: 1.5 }}>
+                  Presets below are only suggestions. OrbitCode sends the exact model ID you type to the selected provider.
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {MODEL_REGISTRY.map((model: ModelInfo) => (
                     <button
