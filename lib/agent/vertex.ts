@@ -8,7 +8,7 @@
 
 import { GoogleGenAI, type Content, type Part, type FunctionCall, type GenerateContentResponse } from '@google/genai';
 import { ALL_TOOLS } from './tools';
-import { OVERGRAVITY_POLICY } from './policy';
+import { ORBITCODE_POLICY } from './policy';
 import { executeAgentWithProvider } from '@/lib/ai/agentRuntime';
 import { resolveModelConfig } from '@/lib/ai/providerStore';
 import type { AiModelConfig } from '@/lib/ai/types';
@@ -148,7 +148,7 @@ export function buildAgentSystemInstruction(projectContext?: string): string {
     '- Use a personal, local-tool feel: calm dark surfaces, mint/sky/amber accents, clear spacing, and compact controls.',
     '- For generated apps, match the project subject and audience instead of forcing a house brand.',
     '',
-    OVERGRAVITY_POLICY,
+    ORBITCODE_POLICY,
     '',
     '## AGENTS.md Changelog',
     'After making meaningful code changes, update AGENTS.md with a changelog entry:',

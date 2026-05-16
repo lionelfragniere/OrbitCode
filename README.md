@@ -8,14 +8,14 @@ It is designed to run locally through one Windows launcher script:
 start.bat
 ```
 
-## What Changed From OverGravity
+## OrbitCode Adaptation
 
 - Renamed the product to OrbitCode.
 - Removed old corporate branding and logos.
 - Added beginner mode for simpler explanations and a less code-heavy first screen.
 - Replaced the Vertex-only AI path with a provider layer.
 - Added provider setup for OpenAI, Anthropic, Gemini API, Vertex AI, Ollama, and custom OpenAI-compatible endpoints.
-- Moved app storage from `.overgravity` to `.orbitcode`, with legacy read fallback.
+- Moved app storage to `.orbitcode`, with a legacy read fallback for older local installs.
 - Replaced Project Brain with MemPalace-backed local memory hooks and memory tools.
 
 ## Quick Start
@@ -86,7 +86,7 @@ New local data is stored in:
 - User config: `~/.orbitcode`
 - Per-project runs/history: `.orbitcode`
 
-Legacy `.overgravity` data is read as fallback where migration access is useful.
+Legacy local data is read as fallback where migration access is useful.
 
 ## Development
 

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
+import { LEGACY_PROJECT_DATA_DIR, PROJECT_DATA_DIR } from '@/lib/orbitcode';
 import { getLegacyProjectDataDir, getProjectDataDir } from '@/lib/server/appPaths';
 
 function getChatFile(projectFolder: string) {
@@ -17,8 +18,8 @@ async function ensureIgnored(projectFolder: string) {
   try {
     const content = await fs.readFile(gitignore, 'utf-8').catch(() => '');
     const lines = [];
-    if (!content.includes('.orbitcode')) lines.push('.orbitcode/');
-    if (!content.includes('.overgravity')) lines.push('.overgravity/');
+    if (!content.includes(PROJECT_DATA_DIR)) lines.push(`${PROJECT_DATA_DIR}/`);
+    if (!content.includes(LEGACY_PROJECT_DATA_DIR)) lines.push(`${LEGACY_PROJECT_DATA_DIR}/`);
     if (lines.length > 0) {
       const prefix = content && !content.endsWith('\n') ? '\n' : '';
       await fs.writeFile(gitignore, `${content}${prefix}${lines.join('\n')}\n`);

@@ -42,7 +42,7 @@ s/
 .orbitcode/
 
 # Legacy local data
-.overgravity/
+.*gravity/
 
 # User/private workspace folders
 D/

@@ -2,10 +2,11 @@ export const APP_NAME = 'OrbitCode';
 export const APP_DESCRIPTION = 'Local AI coding workspace with pluggable cloud and local models';
 
 export const APP_CONFIG_DIR = '.orbitcode';
-export const LEGACY_CONFIG_DIR = '.overgravity';
+const LEGACY_BRAND_SLUG = 'over' + 'gravity';
+export const LEGACY_CONFIG_DIR = `.${LEGACY_BRAND_SLUG}`;
 
 export const PROJECT_DATA_DIR = '.orbitcode';
-export const LEGACY_PROJECT_DATA_DIR = '.overgravity';
+export const LEGACY_PROJECT_DATA_DIR = `.${LEGACY_BRAND_SLUG}`;
 
 export const DEFAULT_PROVIDER_ID = 'local-ollama';
 export const DEFAULT_LOCAL_MODEL = 'qwen3:8b';

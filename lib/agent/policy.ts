@@ -3,7 +3,7 @@
  * that all spawned agent stages must strictly adhere to.
  */
 
-export const OVERGRAVITY_POLICY = `
+export const ORBITCODE_POLICY = `
 ## CORE POLICY REQUIREMENTS
 You must strictly adhere to the following policies in all actions, generated code, and reviews:
 
