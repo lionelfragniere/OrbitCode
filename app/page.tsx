@@ -781,14 +781,33 @@ export default function Home() {
       return;
     }
 
+    const decisionPrefix = 'decision:';
+    const selectedDecision = action.startsWith(decisionPrefix)
+      ? action.slice(decisionPrefix.length).trim()
+      : '';
+    const displayAction = selectedDecision ? `Selected option: ${selectedDecision}` : `Resuming orchestrator execution (${action})`;
+
     // Add resume message to chat
-    const userMsg: ChatMessage = { id: generateId(), role: 'user', content: `[System]: Resuming orchestrator execution (${action})`, timestamp: Date.now() };
+    const userMsg: ChatMessage = { id: generateId(), role: 'user', content: displayAction, timestamp: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
 
     setAgentTask(prev => prev ? { ...prev, status: 'executing' } : null);
     setIsAgentRunning(true);
 
-    _runAgentPipeline(agentTask.intent, agentTask, agentTask.checkpointState.internalStateSnapshot);
+    const resumeSnapshot = {
+      ...agentTask.checkpointState.internalStateSnapshot,
+    } as Record<string, unknown>;
+    const resumeIntent = selectedDecision
+      ? `${agentTask.intent}\n\nUser selected this option: ${selectedDecision}`
+      : agentTask.intent;
+    if (selectedDecision) {
+      const previousIntent = typeof resumeSnapshot.userIntent === 'string'
+        ? resumeSnapshot.userIntent
+        : agentTask.intent;
+      resumeSnapshot.userIntent = `${previousIntent}\n\nUser selected this option: ${selectedDecision}`;
+    }
+
+    _runAgentPipeline(resumeIntent, agentTask, resumeSnapshot);
   };
 
   const _runAgentPipeline = async (text: string, currentTask: AgentTask, resumeState?: any) => {

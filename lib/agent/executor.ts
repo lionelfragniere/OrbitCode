@@ -54,6 +54,37 @@ const IGNORED = new Set([
   'dist', 'build', '.cache', '.vscode', '.idea', 'coverage',
 ]);
 
+function normalizeDecisionOptions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item.trim();
+      if (item && typeof item === 'object') {
+        const option = item as Record<string, unknown>;
+        return String(option.label || option.title || option.value || option.description || '').trim();
+      }
+      return '';
+    })
+    .filter(Boolean);
+}
+
+function hasPlaceholderDecisionPayload(args: Record<string, unknown>): boolean {
+  const title = String(args.title || '').trim();
+  const description = String(args.description || '').trim();
+  const options = normalizeDecisionOptions(args.options);
+  const placeholderText = /^(required decision|decision required|decision|option \d+|option [a-z])$/i;
+  const vagueDescription = /^a decision is required to proceed/i;
+
+  return (
+    !title ||
+    !description ||
+    options.length < 2 ||
+    placeholderText.test(title) ||
+    vagueDescription.test(description) ||
+    options.some((option) => placeholderText.test(option))
+  );
+}
+
 // ════════════════════════════════════════════
 //  Tool Implementation: create_file
 // ════════════════════════════════════════════
@@ -535,6 +566,10 @@ export async function executeTool(
         throw new Error('PAUSE_FOR_APPROVAL: Plan proposed. Waiting for user to approve or edit.');
       }
       case 'ask_decision': {
+        if (hasPlaceholderDecisionPayload(args)) {
+          result = 'ERROR: ask_decision needs clear, concrete choices. Do not use placeholders like "Required Decision", "Option 1", or "Option 2". Ask again with a short plain-language title, a useful explanation, and real button labels that explain what each choice will do.';
+          break;
+        }
         const approvalId = `dec_${Date.now()}`;
         ctx.pendingApprovals.set(approvalId, { id: approvalId, toolName: name, args, safety, timestamp: Date.now() });
         ctx.onProgress?.({

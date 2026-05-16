@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     resumeState, // Optional: for resuming from pauses
   } = body;
 
-  const effectiveProjectContext = `${projectContext || ''}${beginnerMode ? '\n\n## Beginner Mode\nThe user prefers simple explanations. Keep code-heavy details out of summaries unless necessary, name what changed in plain language, and give one clear next step.' : ''}`;
+  const effectiveProjectContext = `${projectContext || ''}${beginnerMode ? '\n\n## Beginner Mode\nThe user prefers simple explanations. Keep code-heavy details out of summaries unless necessary, name what changed in plain language, and give one clear next step. When asking the user to choose, put the real choice in each button label. Never show placeholders like "Option 1" or "Option 2".' : ''}`;
 
   if (!message || !projectFolder) {
     return new Response(
@@ -411,7 +411,7 @@ export async function PATCH(request: NextRequest) {
     taskId,
     pendingApprovals: new Map(),
   };
-  const effectiveProjectContext = `${projectContext || ''}${beginnerMode ? '\n\n## Beginner Mode\nThe user prefers simple explanations. Keep code-heavy details out of summaries unless necessary, name what changed in plain language, and give one clear next step.' : ''}`;
+  const effectiveProjectContext = `${projectContext || ''}${beginnerMode ? '\n\n## Beginner Mode\nThe user prefers simple explanations. Keep code-heavy details out of summaries unless necessary, name what changed in plain language, and give one clear next step. When asking the user to choose, put the real choice in each button label. Never show placeholders like "Option 1" or "Option 2".' : ''}`;
 
   (globalThis as Record<string, unknown>).__og_current_project_folder = projectFolder;
 

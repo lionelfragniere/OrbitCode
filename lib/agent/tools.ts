@@ -290,21 +290,22 @@ export const askDecisionTool: FunctionDeclaration = {
   description:
     'Ask the user to make a decision or provide approval to proceed. ' +
     'This pauses execution. Use this before deploying, git pushes, destructive changes, ' +
-    'or when requirements are ambiguous.',
+    'or when requirements are ambiguous. Every option must be a real, plain-language action. ' +
+    'Never use placeholders like "Option 1", "Option 2", or "Required Decision".',
   parameters: {
     type: Type.OBJECT,
     properties: {
       title: {
         type: Type.STRING,
-        description: 'Short title of the decision (e.g., "Ready to Deploy?")',
+        description: 'Short plain-language title of the decision (e.g., "Choose the workout app style"). Do not use generic titles.',
       },
       description: {
         type: Type.STRING,
-        description: 'Detailed explanation of what the agent is asking',
+        description: 'A useful explanation of what the user is deciding and what happens next.',
       },
       options: {
         type: Type.ARRAY,
-        description: 'Available options for the user to choose from (e.g. ["Deploy to Staging", "Deploy to Prod", "Cancel"])',
+        description: 'Concrete choices with clear labels (e.g. ["Build the simple version first", "Ask me two setup questions", "Cancel"]). Never use Option 1 or Option 2.',
         items: { type: Type.STRING },
       },
     },

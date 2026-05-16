@@ -246,20 +246,75 @@ const PlanCard = memo(function PlanCard({ payload, onApprove, onEdit, taskStatus
   );
 });
 
+interface DecisionOption {
+  label: string;
+  value: string;
+  description?: string;
+}
+
+function toDecisionOption(option: unknown, index: number): DecisionOption {
+  if (typeof option === 'string') {
+    return { label: option, value: option };
+  }
+  if (option && typeof option === 'object') {
+    const record = option as Record<string, unknown>;
+    const label = String(record.label || record.title || record.value || record.description || `Choice ${index + 1}`).trim();
+    return {
+      label,
+      value: String(record.value || label).trim(),
+      description: record.description && String(record.description) !== label ? String(record.description) : undefined,
+    };
+  }
+  const fallback = `Choice ${index + 1}`;
+  return { label: fallback, value: fallback };
+}
+
+function isPlaceholderDecisionOption(option: DecisionOption): boolean {
+  return /^(option \d+|option [a-z]|choice \d+)$/i.test(option.label.trim());
+}
+
 const DecisionCard = memo(function DecisionCard({ payload, onSelect }: { payload: any, onSelect: (option: string) => void }) {
   if (!payload) return null;
+  const title = String(payload.title || 'OrbitCode needs your choice');
+  const description = String(payload.description || 'Choose how you want OrbitCode to continue.');
+  const options = Array.isArray(payload.options) ? payload.options.map(toDecisionOption) : [];
+  const hasPlaceholderOptions = options.length === 0 || options.some(isPlaceholderDecisionOption);
+  const visibleOptions: DecisionOption[] = hasPlaceholderOptions ? [] : options;
+
   return (
     <div className="agent-card">
       <div className="agent-card-header" style={{ color: '#E85C0E' }}>
         <AlertTriangle size={16} /> <strong>Decision Required</strong>
       </div>
       <div className="agent-card-body">
-        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>{payload.title}</p>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>{payload.description}</p>
+        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>{title}</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>{description}</p>
+        {hasPlaceholderOptions && (
+          <div style={{ fontSize: '12px', color: 'var(--color-warning)', marginBottom: '12px', lineHeight: 1.5 }}>
+            OrbitCode asked this unclearly. It should show real choices here, so the agent will be asked to rephrase before continuing.
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {(payload.options || []).map((opt: string, i: number) => (
-            <button key={i} className="agent-btn secondary" onClick={() => onSelect(opt)}>{opt}</button>
+          {visibleOptions.map((opt, i: number) => (
+            <button
+              key={i}
+              className="agent-btn secondary"
+              onClick={() => onSelect(opt.value)}
+              style={{ whiteSpace: 'normal', textAlign: 'left', lineHeight: 1.35, maxWidth: '100%' }}
+            >
+              <span>{opt.label}</span>
+              {opt.description && (
+                <span style={{ display: 'block', marginTop: 3, fontSize: '11px', color: 'var(--text-disabled)' }}>
+                  {opt.description}
+                </span>
+              )}
+            </button>
           ))}
+          {hasPlaceholderOptions && (
+            <button className="agent-btn secondary" onClick={() => onSelect('Please rephrase the choices with clear labels.')}>
+              Ask OrbitCode to show clear choices
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -727,7 +782,13 @@ export function AgentWorkspace({
             {item.kind === 'decision_card' && (
               <DecisionCard
                 payload={item.payload}
-                onSelect={(opt) => handleSend(`User selected option: ${opt}`)}
+                onSelect={(opt) => {
+                  if (task?.checkpointState) {
+                    onResumeTask(task.id, `decision:${opt}`);
+                  } else {
+                    handleSend(`For the decision "${item.payload?.title || 'Decision'}", I choose: ${opt}`);
+                  }
+                }}
               />
             )}
             {item.kind === 'result_card' && (
