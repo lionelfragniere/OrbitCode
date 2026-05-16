@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+build/
+
+# Env files (never commit credentials)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE configs
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+
+# User workspace projects (created at runtime)
+s/
+
+# OrbitCode local data (runs, chat history, per-project config)
+.orbitcode/
+
+# Legacy local data
+.overgravity/
+
+# User/private workspace folders
+D/
+test-workspace/
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+
+# Validation / proof artifacts (not part of source)
+OG_*.md
+OG_*.json
+broken.html
+update*.js
+console.error(e.message))
+
+# Temporary test scripts
+test_*.ts
+test_*.js
+test_*.mjs
+
+# Audit/report artifacts
+*_report.md
+*_checklist_report.md
