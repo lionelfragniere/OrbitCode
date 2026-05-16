@@ -18,12 +18,28 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
   const [providers, setProviders] = useState<Array<{ id: string; name: string; kind: string; defaultModel: string; enabled: boolean; hasApiKey?: boolean; baseUrl?: string }>>([]);
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [baseUrlDraft, setBaseUrlDraft] = useState('');
+  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch('/api/providers')
       .then((res) => res.json())
       .then((data) => setProviders(data.providers || []))
       .catch(() => setProviders([]));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/local-llm/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setOllamaInstalled(Boolean(data.ollamaInstalled));
+      })
+      .catch(() => {
+        if (!cancelled) setOllamaInstalled(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const updateField = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
@@ -234,6 +250,48 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
                   {selectedProvider?.hasApiKey ? 'Encrypted API key saved locally.' : 'No API key saved for this provider.'}
                 </div>
               </div>
+
+              {selectedProvider?.kind === 'ollama' && ollamaInstalled === false && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  padding: '12px',
+                  marginBottom: '12px',
+                  background: 'rgba(96, 165, 250, 0.08)',
+                  border: '1px solid rgba(96, 165, 250, 0.22)',
+                  borderRadius: '8px',
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>
+                    Local AI needs Ollama
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Ollama is optional and can use a lot of disk space. OrbitCode will not install it silently.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn--ghost"
+                      type="button"
+                      onClick={() => window.open('https://ollama.com/download', '_blank', 'noopener,noreferrer')}
+                    >
+                      Install Ollama
+                    </button>
+                    <button
+                      className="btn btn--ghost"
+                      type="button"
+                      onClick={() => {
+                        const openAiProvider = providers.find((provider) => provider.id === 'openai');
+                        updateField('providerId', 'openai');
+                        updateField('selectedProviderId', 'openai');
+                        updateField('providerKind', 'openai');
+                        updateField('selectedModel', openAiProvider?.defaultModel || 'gpt-4.1');
+                      }}
+                    >
+                      Use an API instead
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {selectedProvider && selectedProvider.kind !== 'vertex' && selectedProvider.kind !== 'ollama' && (
                 <div className="field">

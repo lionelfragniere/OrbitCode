@@ -29,8 +29,8 @@ The launcher:
 1. Checks Node.js, npm, and Git.
 2. Installs npm dependencies if needed.
 3. Installs Playwright Chromium if needed.
-4. Checks optional tools: Ollama, Python, uv, MemPalace, and gcloud.
-5. Guides local model and MemPalace setup without silently installing them.
+4. Installs the small local memory helpers `uv` and MemPalace when needed.
+5. Leaves Ollama as an explicit UI choice because Ollama and model downloads can be large.
 6. Starts OrbitCode at `http://localhost:3000`.
 
 ## AI Providers
@@ -48,17 +48,17 @@ API keys are stored in local encrypted secret storage. On Windows, OrbitCode use
 
 ## Local Models
 
-On first launcher run, OrbitCode suggests local Ollama models:
+When you choose local AI in the UI, OrbitCode suggests Ollama models:
 
 - `qwen3:8b` as the fast safe default.
 - `qwen3:14b` as a balanced option.
 - `qwen3-coder:30b` as a higher-quality but slower/RAM-heavy option.
 
-Ollama itself is not installed silently. Install it from [ollama.com](https://ollama.com), then rerun `start.bat`.
+Ollama itself is not installed silently. If you choose local AI and Ollama is missing, OrbitCode shows an in-app prompt with an install link and an API-provider alternative.
 
 ## Memory
 
-OrbitCode uses MemPalace for local project memory. If MemPalace or `uv` is missing, the app shows guided setup commands only.
+OrbitCode uses MemPalace for local project memory. The launcher quietly installs `uv` and MemPalace when they are missing, using the official `uv` installer and `uv tool install mempalace`.
 
 MemPalace can create metadata in the project and in `~/.mempalace`, so project initialization/mining should be opt-in.
 

@@ -81,6 +81,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## Changelog
 
 - 2026-05-16: Completed OrbitCode adaptation, removed legacy corporate branding, added beginner mode, introduced pluggable provider architecture, added MemPalace-backed memory service, moved storage to `.orbitcode` with legacy local-data fallback, and replaced the launcher with a local-first single-file Windows script.
+- 2026-05-16: Launcher now silently installs `uv` and MemPalace when missing; Ollama remains opt-in with UI prompts because local model downloads can be large.
 
 - 2026-04-15: Default mode changed to Agent (agent-first UX)
 - 2026-04-15: Agent turn limit raised from 25 to 50, now configurable via `maxAgentTurns`

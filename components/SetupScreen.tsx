@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, FolderOpen, Globe, Search, Shield, Zap } from 'lucide-react';
 import { AppSettings, DEFAULT_SETTINGS } from '@/lib/types';
 
@@ -26,6 +26,22 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
     selectedModel: settings.selectedModel || 'qwen3:8b',
     beginnerMode: settings.beginnerMode ?? true,
   });
+  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/local-llm/status')
+      .then((response) => response.json())
+      .then((status) => {
+        if (!cancelled) setOllamaInstalled(Boolean(status.ollamaInstalled));
+      })
+      .catch(() => {
+        if (!cancelled) setOllamaInstalled(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isValid = draft.projectFolder.trim();
 
@@ -112,6 +128,47 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
             API keys are configured later in Settings and stored encrypted locally.
           </span>
         </div>
+
+        {draft.selectedProviderId === 'local-ollama' && ollamaInstalled === false && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            padding: '12px',
+            background: 'rgba(96, 165, 250, 0.08)',
+            border: '1px solid rgba(96, 165, 250, 0.22)',
+            borderRadius: '8px',
+          }}>
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>
+              Local AI needs Ollama
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Ollama is optional and can use a lot of disk space, so OrbitCode will not install it silently. Install it only if you want models running on this PC.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                className="btn btn--ghost"
+                type="button"
+                onClick={() => window.open('https://ollama.com/download', '_blank', 'noopener,noreferrer')}
+              >
+                Install Ollama
+              </button>
+              <button
+                className="btn btn--ghost"
+                type="button"
+                onClick={() => setDraft({
+                  ...draft,
+                  providerId: 'openai',
+                  selectedProviderId: 'openai',
+                  providerKind: 'openai',
+                  selectedModel: defaultModelForProvider('openai'),
+                })}
+              >
+                Use an API instead
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="field">
           <label className="field__label">

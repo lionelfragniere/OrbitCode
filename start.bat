@@ -6,7 +6,11 @@ set "PORT=3000"
 set "FAIL=0"
 set "WARN=0"
 set "APP_DIR=.orbitcode"
-set "LOCAL_LLM_MARKER=%APP_DIR%\local-llm-choice.txt"
+set "LOCAL_TOOLS_DIR=%CD%\%APP_DIR%\tools"
+set "LOCAL_UV_DIR=%LOCAL_TOOLS_DIR%\uv"
+set "LOCAL_UV_EXE=%LOCAL_UV_DIR%\uv.exe"
+set "USER_BIN=%USERPROFILE%\.local\bin"
+set "UV_EXE=uv"
 
 echo.
 echo  ========================================
@@ -15,12 +19,14 @@ echo    Local AI coding workspace
 echo  ========================================
 echo.
 echo  This launcher keeps OrbitCode local.
-echo  It installs npm dependencies and Playwright only.
-echo  Ollama, MemPalace, uv, and gcloud are guided setup steps.
+echo  It installs npm dependencies, Playwright, uv, and MemPalace when needed.
+echo  Ollama stays optional because the app and model downloads can be large.
 echo.
 
 if not exist "%APP_DIR%" mkdir "%APP_DIR%"
 if not exist "%APP_DIR%\runs" mkdir "%APP_DIR%\runs"
+if not exist "%LOCAL_TOOLS_DIR%" mkdir "%LOCAL_TOOLS_DIR%"
+set "PATH=%USER_BIN%;%LOCAL_UV_DIR%;%PATH%"
 
 echo  Checking required tools...
 echo.
@@ -60,41 +66,11 @@ echo.
 
 where ollama >nul 2>nul
 if !errorlevel! neq 0 (
-  echo  [WARN] Ollama was not found.
-  echo         Local LLMs will work after you install Ollama from https://ollama.com
-  echo         Recommended model for this PC: qwen3:8b
-  set "WARN=1"
+  echo  [INFO] Ollama was not found. Local models are optional and can be large.
+  echo         OrbitCode will ask in the UI before you choose local AI.
 ) else (
   echo  [OK]   Ollama found
-  if not exist "%LOCAL_LLM_MARKER%" (
-    echo.
-    echo  Local model setup
-    echo  1. qwen3:8b          fast safe default
-    echo  2. qwen3:14b         balanced, uses more memory
-    echo  3. qwen3-coder:30b   higher quality, slower and RAM-heavy
-    echo  4. Skip for now
-    echo.
-    set /p "LLM_CHOICE=  Pull a local model now? [1/2/3/4]: "
-    if "!LLM_CHOICE!"=="1" set "OLLAMA_MODEL=qwen3:8b"
-    if "!LLM_CHOICE!"=="2" set "OLLAMA_MODEL=qwen3:14b"
-    if "!LLM_CHOICE!"=="3" set "OLLAMA_MODEL=qwen3-coder:30b"
-    if defined OLLAMA_MODEL (
-      echo !OLLAMA_MODEL!>"%LOCAL_LLM_MARKER%"
-      echo.
-      echo  Pulling !OLLAMA_MODEL! with Ollama...
-      call ollama pull !OLLAMA_MODEL!
-      if !errorlevel! neq 0 (
-        echo  [WARN] Ollama pull did not finish. You can retry later:
-        echo         ollama pull !OLLAMA_MODEL!
-        set "WARN=1"
-      ) else (
-        echo  [OK]   !OLLAMA_MODEL! ready
-      )
-    ) else (
-      echo skipped>"%LOCAL_LLM_MARKER%"
-      echo  [OK]   Skipped local model pull
-    )
-  )
+  echo         Model downloads are handled in the OrbitCode UI.
 )
 
 where python >nul 2>nul
@@ -108,19 +84,49 @@ if !errorlevel! neq 0 (
 
 where uv >nul 2>nul
 if !errorlevel! neq 0 (
-  echo  [WARN] uv was not found.
-  echo         Install guide: https://docs.astral.sh/uv/getting-started/installation/
-  set "WARN=1"
+  if exist "%LOCAL_UV_EXE%" (
+    set "UV_EXE=%LOCAL_UV_EXE%"
+    echo  [OK]   uv found in OrbitCode tools
+  ) else (
+    echo  [SETUP] Installing uv quietly...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $env:UV_INSTALL_DIR='%LOCAL_UV_DIR%'; $env:UV_NO_MODIFY_PATH='1'; irm https://astral.sh/uv/install.ps1 | iex" >nul
+    if !errorlevel! neq 0 (
+      where winget >nul 2>nul
+      if !errorlevel! equ 0 (
+        winget install --id=astral-sh.uv -e --silent --accept-package-agreements --accept-source-agreements --disable-interactivity >nul
+      )
+    )
+    if exist "%LOCAL_UV_EXE%" (
+      set "UV_EXE=%LOCAL_UV_EXE%"
+      echo  [OK]   uv installed locally for OrbitCode
+    ) else (
+      where uv >nul 2>nul
+      if !errorlevel! equ 0 (
+        set "UV_EXE=uv"
+        echo  [OK]   uv installed
+      ) else (
+        echo  [WARN] uv could not be installed automatically.
+        echo         OrbitCode will still start, but memory setup may be limited.
+        set "WARN=1"
+      )
+    )
+  )
 ) else (
+  set "UV_EXE=uv"
   echo  [OK]   uv found
 )
 
 where mempalace >nul 2>nul
 if !errorlevel! neq 0 (
-  echo  [WARN] MemPalace was not found.
-  echo         OrbitCode will show memory setup guidance instead of installing it silently.
-  echo         Project: https://github.com/MemPalace
-  set "WARN=1"
+  echo  [SETUP] Installing MemPalace quietly...
+  call "!UV_EXE!" tool install mempalace >nul
+  if !errorlevel! neq 0 (
+    echo  [WARN] MemPalace could not be installed automatically.
+    echo         OrbitCode will still start, but memory search may be unavailable.
+    set "WARN=1"
+  ) else (
+    echo  [OK]   MemPalace installed
+  )
 ) else (
   echo  [OK]   MemPalace found
 )
