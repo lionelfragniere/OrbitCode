@@ -35,18 +35,23 @@ Thumbs.db
 # Coverage
 coverage/
 
-# User workspace projects (created at runtime)
-s/
+# User workspace projects and generated apps (created at runtime; never push)
+/s/
+/D/
+/test-workspace/
+/workspace/
+/workspaces/
+/projects/
+/generated-projects/
+/local-projects/
+/*-app/
+/*-project/
 
 # OrbitCode local data (runs, chat history, per-project config)
 .orbitcode/
 
 # Legacy local data
 .*gravity/
-
-# User/private workspace folders
-D/
-test-workspace/
 
 # TypeScript build info
 tsconfig.tsbuildinfo
