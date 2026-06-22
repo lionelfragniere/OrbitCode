@@ -289,7 +289,32 @@ export default function Home() {
     try {
       const res = await fetch(`/api/files?projectFolder=${encodeURIComponent(projPath)}`);
       const data = await res.json();
-      setFileTree(data.tree || []);
+      const tree = data.tree || [];
+      setFileTree(tree);
+      const indexNode = tree.find((node: FileNode) => !node.isDirectory && /^index\.html?$/i.test(node.path));
+      if (indexNode) {
+        try {
+          const fileRes = await fetch(
+            `/api/files?projectFolder=${encodeURIComponent(projPath)}&filePath=${encodeURIComponent(indexNode.path)}`
+          );
+          const fileData = await fileRes.json();
+          if (fileData.content !== undefined) {
+            const indexFile: OpenFile = {
+              path: indexNode.path,
+              name: indexNode.name,
+              content: fileData.content,
+              language: getLanguageFromPath(indexNode.path),
+              isDirty: false,
+            };
+            setOpenFiles([agentFile, indexFile]);
+            setActiveFilePath(indexFile.path);
+            setPreviewFile(indexFile.path);
+            setPreviewOpen(true);
+          }
+        } catch {
+          // Keep the project open even when preview bootstrap cannot read index.html.
+        }
+      }
     } catch {
       setFileTree([]);
     }

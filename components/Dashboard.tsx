@@ -56,6 +56,7 @@ export default function Dashboard({
   const [newProjectName, setNewProjectName] = useState('');
   const [newGitRemote, setNewGitRemote] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [filter, setFilter] = useState('');
 
   // Load projects from workspace
@@ -80,6 +81,7 @@ export default function Dashboard({
   const handleCreate = async () => {
     if (!newProjectName.trim() || creating) return;
     setCreating(true);
+    setCreateError('');
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
@@ -96,15 +98,18 @@ export default function Dashboard({
         setShowCreateNew(false);
         setNewProjectName('');
         setNewGitRemote('');
+        setCreateError('');
         await loadProjects();
         onOpenProject(data.project.path, data.project.name);
       } else {
-        alert(data.error || 'Failed to create project');
+        setCreateError(data.error || 'Failed to create project');
       }
     } catch (err) {
       console.error('Failed to create project:', err);
+      setCreateError('Failed to create project');
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   // Remove from recent
@@ -254,7 +259,7 @@ export default function Dashboard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
                 className="btn btn--primary"
-                onClick={() => setShowCreateNew(true)}
+                onClick={() => { setCreateError(''); setShowCreateNew(true); }}
                 style={{ gap: '6px' }}
               >
                 <Plus size={14} /> New Project
@@ -294,7 +299,7 @@ export default function Dashboard({
                   <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     Create New Project
                   </span>
-                  <button className="icon-btn" onClick={() => setShowCreateNew(false)} title="Close">
+                  <button className="icon-btn" onClick={() => { setCreateError(''); setShowCreateNew(false); }} title="Close">
                     <X size={12} />
                   </button>
                 </div>
@@ -305,7 +310,7 @@ export default function Dashboard({
                     type="text"
                     placeholder="my-awesome-app"
                     value={newProjectName}
-                    onChange={(e) => setNewProjectName(e.target.value)}
+                    onChange={(e) => { setNewProjectName(e.target.value); setCreateError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                     autoFocus
                   />
@@ -324,12 +329,24 @@ export default function Dashboard({
                     type="text"
                     placeholder="https://github.com/your-org/repo.git"
                     value={newGitRemote}
-                    onChange={(e) => setNewGitRemote(e.target.value)}
+                    onChange={(e) => { setNewGitRemote(e.target.value); setCreateError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                   />
                 </div>
+                {createError && (
+                  <div role="alert" style={{
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid color-mix(in srgb, var(--color-error) 35%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-error) 10%, transparent)',
+                    color: 'var(--color-error)',
+                    fontSize: 12,
+                  }}>
+                    {createError}
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button className="btn btn--ghost" onClick={() => setShowCreateNew(false)}>Cancel</button>
+                  <button className="btn btn--ghost" onClick={() => { setCreateError(''); setShowCreateNew(false); }}>Cancel</button>
                   <button
                     className="btn btn--primary"
                     onClick={handleCreate}

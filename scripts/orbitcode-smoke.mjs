@@ -169,10 +169,16 @@ async function runGuiSmoke(project) {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
   const consoleErrors = [];
+  const dialogs = [];
   page.on('console', (msg) => {
-    if (msg.type() === 'error') consoleErrors.push(msg.text());
+    const text = msg.text();
+    if (msg.type() === 'error' && !text.includes('status of 409 (Conflict)')) consoleErrors.push(text);
   });
   page.on('pageerror', (error) => consoleErrors.push(error.message));
+  page.on('dialog', (dialog) => {
+    dialogs.push(dialog.message());
+    dialog.dismiss().catch(() => {});
+  });
 
   try {
     await page.goto(base, { waitUntil: 'domcontentloaded' });
@@ -181,6 +187,17 @@ async function runGuiSmoke(project) {
     if (/[\u00e2\ufffd\u00c3\u00c2]/.test(body)) fail('GUI contains mojibake text');
     const nestedButtonLikes = await page.locator('button button, [role="button"] button').count();
     if (nestedButtonLikes) fail(`GUI has nested button-like controls: ${nestedButtonLikes}`);
+    const newProjectButton = page.getByRole('button', { name: 'New Project' });
+    if (await newProjectButton.count() !== 1) fail('New Project button not visible');
+    await newProjectButton.click();
+    const projectNameInput = page.locator('input[placeholder="my-awesome-app"]');
+    if (await projectNameInput.count() !== 1) fail('New project name input not visible');
+    await projectNameInput.fill(projectName);
+    await page.getByRole('button', { name: 'Create & Open' }).click();
+    await page.getByRole('alert').getByText('Project already exists').waitFor({ timeout: 15000 });
+    if (dialogs.length) fail(`Create project used browser dialog: ${dialogs.join(' | ')}`);
+    await page.getByRole('button', { name: 'Close' }).click();
+    await projectNameInput.waitFor({ state: 'detached', timeout: 15000 });
 
     if (!body.includes(projectName) || !body.includes('index.html')) {
       const opener = page.locator(`[title="Open ${attr(projectName)}"]`);
@@ -191,27 +208,24 @@ async function runGuiSmoke(project) {
       body = await page.locator('body').innerText();
     }
 
-    for (const marker of [projectName, 'index.html', 'gee', 'OrbitCode Agent']) {
+    for (const marker of [projectName, 'index.html', 'gee']) {
       if (!body.includes(marker)) fail(`GUI missing ${marker}`);
     }
+    const agentTab = page.locator('.editor-tab[title^="agent://workspace"]');
+    if (await agentTab.count() !== 1) fail('Agent tab not available after opening project');
 
     const indexFile = page.locator('aside').getByRole('button', { name: 'index.html' });
     if (await indexFile.count() !== 1) fail('File tree index.html button not visible');
-    await Promise.all([
-      page.waitForResponse((res) => res.url().includes('/api/files') && res.url().includes('filePath=index.html'), { timeout: 20000 }),
-      indexFile.click(),
-    ]);
     try {
       await page.waitForFunction(() => /Monthey\s+Crop\s+Intel/.test(document.body.innerText), null, { timeout: 15000 });
     } catch {
       const text = await page.locator('body').innerText({ timeout: 5000 });
-      fail(`index.html did not open in editor: ${text.slice(0, 500)}`);
+      fail(`index.html did not open automatically in editor: ${text.slice(0, 500)}`);
     }
 
     const previewToggle = page.locator('[title="Toggle Preview"]');
     if (await previewToggle.count() !== 1) fail('Preview toggle not visible');
     const previewFrame = page.locator('iframe[title="Preview"]');
-    if (await previewFrame.count() === 0) fail('Preview did not open automatically for index.html');
     await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
     await page.waitForFunction(() => {
       const iframe = document.querySelector('iframe[title="Preview"]');
