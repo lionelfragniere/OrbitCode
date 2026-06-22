@@ -210,9 +210,7 @@ async function runGuiSmoke(project) {
     const previewToggle = page.locator('[title="Toggle Preview"]');
     if (await previewToggle.count() !== 1) fail('Preview toggle not visible');
     const previewFrame = page.locator('iframe[title="Preview"]');
-    if (await previewFrame.count() === 0) {
-      await previewToggle.click();
-    }
+    if (await previewFrame.count() === 0) fail('Preview did not open automatically for index.html');
     await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
     await page.waitForFunction(() => {
       const iframe = document.querySelector('iframe[title="Preview"]');
@@ -227,6 +225,11 @@ async function runGuiSmoke(project) {
     if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(`${body}\n${previewText}`)) {
       fail('GUI contains runtime error text');
     }
+    await page.locator('[title="Close preview"]').click();
+    await previewFrame.waitFor({ state: 'detached', timeout: 15000 });
+    await indexFile.click();
+    await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
+    await preview.getByText('Crop identification for Monthey').waitFor({ timeout: 20000 });
 
     await page.screenshot({ path: screenshotPath, fullPage: false });
     if (consoleErrors.length) fail(`Console/page errors: ${consoleErrors.slice(0, 3).join(' | ')}`);

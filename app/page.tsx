@@ -344,7 +344,14 @@ export default function Home() {
   const openFile = async (node: FileNode) => {
     if (node.isDirectory) return;
     const existing = openFiles.find((f) => f.path === node.path);
-    if (existing) { setActiveFilePath(node.path); return; }
+    if (existing) {
+      setActiveFilePath(node.path);
+      if (/\.html?$/i.test(node.path)) {
+        setPreviewFile(node.path);
+        setPreviewOpen(true);
+      }
+      return;
+    }
 
     const isImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(node.path);
     if (isImage) {
@@ -393,7 +400,10 @@ export default function Home() {
         };
         setOpenFiles((prev) => [...prev, newFile]);
         setActiveFilePath(node.path);
-        if (/\.html?$/i.test(node.path)) setPreviewFile(node.path);
+        if (/\.html?$/i.test(node.path)) {
+          setPreviewFile(node.path);
+          setPreviewOpen(true);
+        }
       }
     } catch {
       showToast('Failed to open file', 'error');
