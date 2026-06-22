@@ -445,7 +445,7 @@ export default function GitPanel({ projectFolder, onToast }: GitPanelProps) {
           />
           <button className="icon-btn" onClick={handleAutofillCommitMsg}
             disabled={!!loading || totalChanges === 0}
-            title="AI: Generate commit message" style={{ color: '#0092D1', flexShrink: 0 }}>
+            title="AI: Generate commit message" style={{ color: !!loading || totalChanges === 0 ? undefined : '#0092D1', flexShrink: 0 }}>
             {loading === 'autofill' ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />}
           </button>
         </div>
@@ -463,13 +463,13 @@ export default function GitPanel({ projectFolder, onToast }: GitPanelProps) {
         <div style={{ position: 'relative', flex: 1 }}>
           <div style={{ display: 'flex', gap: '0' }}>
             <button className="btn btn--ghost btn--sm" onClick={() => handlePull('pull-merge')}
-              disabled={!!loading} style={{ flex: 1, borderRadius: '6px 0 0 6px' }}
+              disabled={!!loading || !status?.remote} style={{ flex: 1, borderRadius: '6px 0 0 6px' }}
               title={status?.remote ? `Pull from ${status.remote}` : 'Set remote first'}>
               {loading === 'pull-merge' || loading === 'pull' ? <Loader2 size={12} className="spin" /> : <ArrowDownToLine size={12} />}
               Pull
             </button>
             <button className="btn btn--ghost btn--sm" onClick={() => setShowPullMenu(!showPullMenu)}
-              disabled={!!loading} style={{ padding: '4px', borderRadius: '0 6px 6px 0', borderLeft: '1px solid var(--border-subtle)' }}>
+              disabled={!!loading || !status?.remote} style={{ padding: '4px', borderRadius: '0 6px 6px 0', borderLeft: '1px solid var(--border-subtle)' }}>
               <ChevronDown size={10} />
             </button>
           </div>
@@ -493,7 +493,7 @@ export default function GitPanel({ projectFolder, onToast }: GitPanelProps) {
 
         {/* Push */}
         <button className="btn btn--ghost btn--sm" onClick={handlePush}
-          disabled={!!loading} style={{ flex: 1 }}
+          disabled={!!loading || !status?.remote} style={{ flex: 1 }}
           title={status?.remote ? `Push to ${status.remote}` : 'Set remote first'}>
           {loading === 'push' || loading === 'publish-branch' ? <Loader2 size={12} className="spin" /> : <ArrowUpFromLine size={12} />}
           {!status?.hasUpstream && status?.remote ? 'Publish' : 'Push'}

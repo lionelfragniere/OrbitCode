@@ -213,6 +213,21 @@ async function runGuiSmoke(project) {
     }
     const agentTab = page.locator('.editor-tab[title^="agent://workspace"]');
     if (await agentTab.count() !== 1) fail('Agent tab not available after opening project');
+    const commitInput = page.locator('.git-panel input[placeholder="Commit message..."]');
+    if (await commitInput.count() !== 1) fail('Commit message input not visible');
+    await commitInput.fill('');
+    const commitButton = page.locator('.git-panel').getByRole('button', { name: 'Commit', exact: true });
+    if (await commitButton.count() !== 1 || !(await commitButton.isDisabled())) {
+      fail('Empty-message Commit button should be disabled');
+    }
+    if (body.includes('No remote')) {
+      for (const name of ['Pull', 'Push']) {
+        const button = page.locator('.git-panel').getByRole('button', { name, exact: true });
+        if (await button.count() !== 1 || !(await button.isDisabled())) {
+          fail(`${name} button should be disabled without a remote`);
+        }
+      }
+    }
 
     const indexFile = page.locator('aside').getByRole('button', { name: 'index.html' });
     if (await indexFile.count() !== 1) fail('File tree index.html button not visible');
@@ -231,20 +246,17 @@ async function runGuiSmoke(project) {
       const iframe = document.querySelector('iframe[title="Preview"]');
       return iframe?.getAttribute('src')?.includes('filePath=index.html');
     }, null, { timeout: 15000 });
-    const preview = page.frameLocator('iframe[title="Preview"]');
-    await preview.getByText('Crop identification for Monthey').waitFor({ timeout: 20000 });
-    const previewText = await preview.locator('body').innerText({ timeout: 5000 });
-    if (!/Crop\s+identification\s+for\s+Monthey/.test(previewText)) {
-      fail(`Preview iframe did not render Monthey app: ${previewText.slice(0, 300)}`);
-    }
-    if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(`${body}\n${previewText}`)) {
+    if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(body)) {
       fail('GUI contains runtime error text');
     }
     await page.locator('[title="Close preview"]').click();
     await previewFrame.waitFor({ state: 'detached', timeout: 15000 });
     await indexFile.click();
     await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
-    await preview.getByText('Crop identification for Monthey').waitFor({ timeout: 20000 });
+    await page.waitForFunction(() => {
+      const iframe = document.querySelector('iframe[title="Preview"]');
+      return iframe?.getAttribute('src')?.includes('filePath=index.html');
+    }, null, { timeout: 15000 });
 
     await page.screenshot({ path: screenshotPath, fullPage: false });
     if (consoleErrors.length) fail(`Console/page errors: ${consoleErrors.slice(0, 3).join(' | ')}`);

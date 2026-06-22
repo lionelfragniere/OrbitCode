@@ -859,6 +859,18 @@ html, body {
   color: var(--text-primary);
 }
 
+.icon-btn:disabled,
+.icon-btn:disabled:hover,
+.btn:disabled,
+.btn:disabled:hover {
+  background: color-mix(in srgb, var(--bg-secondary) 70%, transparent);
+  border-color: var(--border-subtle);
+  box-shadow: none;
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .icon-btn--active {
   background: var(--accent-glow);
   color: var(--accent-secondary);
