@@ -14,12 +14,6 @@ interface GitActionDialogProps {
   loading?: string | null;
 }
 
-const RISK_COLORS: Record<string, string> = {
-  safe: 'var(--color-success)',
-  moderate: 'var(--color-warning)',
-  destructive: 'var(--color-error)',
-};
-
 export default function GitActionDialog({ title, evaluation, onAction, onClose, loading }: GitActionDialogProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);

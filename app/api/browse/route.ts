@@ -19,14 +19,14 @@ export async function GET(request: NextRequest) {
     locations.push({ name: 'Home', path: home, type: 'home' });
 
     // Desktop
-    locations.push({ name: 'Desktop', path: path.join(home, 'Desktop'), type: 'desktop' });
+    locations.push({ name: 'Desktop', path: path.join(/* turbopackIgnore: true */ home, 'Desktop'), type: 'desktop' });
 
     // Common dev folders
     const devFolders = ['projects', 'Projects', 'dev', 'Development', 'repos', 'code', 'workspace', 'src'];
     for (const folder of devFolders) {
-      const p = path.join(home, folder);
+      const p = path.join(/* turbopackIgnore: true */ home, folder);
       try {
-        await fs.access(p);
+        await fs.access(/* turbopackIgnore: true */ p);
         locations.push({ name: folder, path: p, type: 'dev' });
       } catch { /* doesn't exist */ }
     }
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       const drives = ['C:', 'D:', 'E:', 'F:'];
       for (const drive of drives) {
         try {
-          await fs.access(drive + '\\');
+          await fs.access(/* turbopackIgnore: true */ drive + '\\');
           locations.push({ name: `${drive}\\`, path: `${drive}\\`, type: 'drive' });
         } catch { /* not available */ }
       }
@@ -49,18 +49,18 @@ export async function GET(request: NextRequest) {
 
   // List directories in the given path
   try {
-    const resolved = path.resolve(dirPath);
-    const entries = await fs.readdir(resolved, { withFileTypes: true });
+    const resolved = path.resolve(/* turbopackIgnore: true */ dirPath);
+    const entries = await fs.readdir(/* turbopackIgnore: true */ resolved, { withFileTypes: true });
     
     const dirs = entries
       .filter((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules')
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((e) => ({
         name: e.name,
-        path: path.join(resolved, e.name).replace(/\\/g, '/'),
+        path: path.join(/* turbopackIgnore: true */ resolved, e.name).replace(/\\/g, '/'),
       }));
 
-    const parent = path.dirname(resolved);
+    const parent = path.dirname(/* turbopackIgnore: true */ resolved);
     
     return NextResponse.json({
       current: resolved.replace(/\\/g, '/'),

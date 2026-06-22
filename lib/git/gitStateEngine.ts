@@ -308,9 +308,6 @@ export function evaluateAction(state: RepoState, action: GitAction): ActionEvalu
     }
   }
 
-  const hasDirtyBlocker = blockers.length > 0 && recoveryActions.some(r => r.id === 'stash-and-pull' || r.id === 'stash-and-switch');
-  const canProceed = blockers.length === 0 || (action === 'checkout' && !state.mergeInProgress && !state.rebaseInProgress && !state.hasLockFile);
-
   return {
     canProceed: blockers.length === 0,
     summary: summary || (blockers.length > 0 ? blockers[0] : 'Ready.'),

@@ -289,8 +289,6 @@ export async function* runAgentLoop(
       });
 
       // Process each function call
-      const functionResponses: Part[] = [];
-      
       for (const fc of functionCalls) {
         yield {
           type: 'tool_call',
@@ -533,7 +531,7 @@ export async function* executeAgentWithTools(
           }
           
           // Check if any command returned a non-zero exit code
-          const failedCommands = commandsRun.filter(cmd => {
+          const failedCommands = commandsRun.filter(() => {
             // Find the corresponding tool_result for this command
             const correspondingResults = contents
               .filter(c => c.role === 'user')

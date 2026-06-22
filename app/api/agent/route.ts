@@ -536,16 +536,16 @@ async function saveVerificationEvidence(
   evidence: Record<string, unknown>,
 ): Promise<void> {
   try {
-    const runDir = path.join(getProjectRunsDir(projectFolder), taskId);
-    await fs.mkdir(runDir, { recursive: true });
-    const evidencePath = path.join(runDir, 'verification_evidence.json');
+    const runDir = path.join(/* turbopackIgnore: true */ getProjectRunsDir(projectFolder), taskId);
+    await fs.mkdir(/* turbopackIgnore: true */ runDir, { recursive: true });
+    const evidencePath = path.join(/* turbopackIgnore: true */ runDir, 'verification_evidence.json');
     // Merge with existing evidence if present
     let existing: Record<string, unknown> = {};
     try {
-      existing = JSON.parse(await fs.readFile(evidencePath, 'utf-8'));
+      existing = JSON.parse(await fs.readFile(/* turbopackIgnore: true */ evidencePath, 'utf-8'));
     } catch { /* no existing evidence */ }
     const merged = { ...existing, ...evidence, timestamp: new Date().toISOString() };
-    await fs.writeFile(evidencePath, JSON.stringify(merged, null, 2), 'utf-8');
+    await fs.writeFile(/* turbopackIgnore: true */ evidencePath, JSON.stringify(merged, null, 2), 'utf-8');
   } catch (e) {
     console.error('[Evidence] Failed to save verification evidence:', e);
   }

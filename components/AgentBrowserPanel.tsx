@@ -223,7 +223,7 @@ export default function AgentBrowserPanel({
                           Broken Image<br/>{(s as string).split('/').pop()}
                         </div>
                       ) : (
-                        <img src={s as string} onError={() => setFailedImages(prev => new Set(prev).add(s as string))} style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
+                        <img src={s as string} alt={`Screenshot ${i + 1}`} onError={() => setFailedImages(prev => new Set(prev).add(s as string))} style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
                       )}
                       <div style={{ padding: '6px', fontSize: '10px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', textAlign: 'center' }}>Screenshot {i + 1}</div>
                     </div>

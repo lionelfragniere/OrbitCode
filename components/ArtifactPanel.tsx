@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FileText, ClipboardList, GitPullRequest, TestTube2, 
+  FileText, ClipboardList, TestTube2,
   ChevronRight, ChevronDown, Clock, Bot, User, Trash2,
   Brain, ScrollText
 } from 'lucide-react';

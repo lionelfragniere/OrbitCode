@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Clock, Terminal, FileText, GitBranch,
-  Settings, Zap, AlertTriangle, CheckCircle, XCircle,
+  Settings, Zap, CheckCircle, XCircle,
   Ban, ChevronDown, ChevronRight, RefreshCw
 } from 'lucide-react';
 

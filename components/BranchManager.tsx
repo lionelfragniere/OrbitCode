@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   GitBranch, Plus, Trash2, Check, X, RefreshCw,
-  Loader2, ChevronDown, ArrowRight, Upload
+  Loader2, ChevronDown, ArrowRight
 } from 'lucide-react';
 import GitActionDialog from './GitActionDialog';
 import type { ActionEvaluation } from '@/lib/types';

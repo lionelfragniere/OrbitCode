@@ -10,8 +10,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
-import { runVisualQa, formatVisualQaReport, type VisualQaResult } from './visualQa';
-import { runRouteCoverageQa, formatRouteCoverageReport, type RouteCoverageResult } from './routeCoverageQa';
+import { runVisualQa, type VisualQaResult } from './visualQa';
+import { runRouteCoverageQa, type RouteCoverageResult } from './routeCoverageQa';
 
 // ════════════════════════════════════════════
 //  Types
@@ -200,11 +200,10 @@ export async function runPostBuildVerify(projectFolder: string): Promise<BuildVe
 
     // 4. HTTP check
     let httpStatus = 0;
-    let httpBody = '';
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
       httpStatus = resp.status;
-      httpBody = await resp.text();
+      await resp.text();
     } catch (e) {
       errors.push(`Dev server unreachable at ${url}: ${e instanceof Error ? e.message : 'unknown'}`);
       return {

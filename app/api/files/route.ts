@@ -5,9 +5,9 @@ import path from 'path';
 
 // Security: prevent path traversal
 function sanitizePath(basePath: string, requestedPath: string): string | null {
-  const root = path.resolve(basePath);
-  const resolved = path.resolve(root, requestedPath);
-  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  const root = path.resolve(/* turbopackIgnore: true */ basePath);
+  const resolved = path.resolve(/* turbopackIgnore: true */ root, requestedPath);
+  const normalize = (p: string) => path.resolve(/* turbopackIgnore: true */ p).replace(/\\/g, '/').toLowerCase();
   const normalizedRoot = normalize(root);
   const normalizedTarget = normalize(resolved);
   if (normalizedTarget !== normalizedRoot && !normalizedTarget.startsWith(`${normalizedRoot}/`)) {
@@ -35,7 +35,7 @@ async function buildFileTree(dirPath: string, basePath: string, depth: number = 
   if (depth > 6) return []; // Limit recursion depth
   
   try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(/* turbopackIgnore: true */ dirPath, { withFileTypes: true });
     const nodes: FileTreeNode[] = [];
 
     // Sort: directories first, then alphabetically
@@ -47,7 +47,7 @@ async function buildFileTree(dirPath: string, basePath: string, depth: number = 
       });
 
     for (const entry of sorted) {
-      const fullPath = path.join(dirPath, entry.name);
+      const fullPath = path.join(/* turbopackIgnore: true */ dirPath, entry.name);
       const relativePath = path.relative(basePath, fullPath).replace(/\\/g, '/');
 
       if (entry.isDirectory()) {
@@ -59,7 +59,7 @@ async function buildFileTree(dirPath: string, basePath: string, depth: number = 
           children,
         });
       } else {
-        const stat = await fs.stat(fullPath);
+        const stat = await fs.stat(/* turbopackIgnore: true */ fullPath);
         nodes.push({
           name: entry.name,
           path: relativePath,
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 403 });
     }
     try {
-      const content = await fs.readFile(safePath, 'utf-8');
+      const content = await fs.readFile(/* turbopackIgnore: true */ safePath, 'utf-8');
       return NextResponse.json({ content, path: filePath });
     } catch {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
@@ -101,8 +101,8 @@ export async function GET(request: NextRequest) {
 
   // Otherwise, return file tree
   try {
-    const projectRoot = path.resolve(projectFolder);
-    await fs.access(projectRoot);
+    const projectRoot = path.resolve(/* turbopackIgnore: true */ projectFolder);
+    await fs.access(/* turbopackIgnore: true */ projectRoot);
     const tree = await buildFileTree(projectRoot, projectRoot);
     return NextResponse.json({ tree });
   } catch {
@@ -126,10 +126,10 @@ export async function POST(request: NextRequest) {
 
   try {
     if (isDirectory) {
-      await fs.mkdir(safePath, { recursive: true });
+      await fs.mkdir(/* turbopackIgnore: true */ safePath, { recursive: true });
     } else {
-      await fs.mkdir(path.dirname(safePath), { recursive: true });
-      await fs.writeFile(safePath, content || '', 'utf-8');
+      await fs.mkdir(path.dirname(/* turbopackIgnore: true */ safePath), { recursive: true });
+      await fs.writeFile(/* turbopackIgnore: true */ safePath, content || '', 'utf-8');
     }
     return NextResponse.json({ success: true, path: filePath });
   } catch (error) {
@@ -153,7 +153,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await fs.writeFile(safePath, content, 'utf-8');
+    await fs.writeFile(/* turbopackIgnore: true */ safePath, content, 'utf-8');
     return NextResponse.json({ success: true });
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Failed to save';
@@ -177,11 +177,11 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const stat = await fs.stat(safePath);
+    const stat = await fs.stat(/* turbopackIgnore: true */ safePath);
     if (stat.isDirectory()) {
-      await fs.rm(safePath, { recursive: true });
+      await fs.rm(/* turbopackIgnore: true */ safePath, { recursive: true });
     } else {
-      await fs.unlink(safePath);
+      await fs.unlink(/* turbopackIgnore: true */ safePath);
     }
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -45,14 +45,14 @@ export function cleanupProjectBrowserSessions(projectId: string): void {
 // ════════════════════════════════════════════
 async function flushSessionState(ctx: ExecutorContext, session: BrowserSessionState) {
   try {
-    const runPath = path.join(ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
-    await fs.mkdir(runPath, { recursive: true });
+    const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
+    await fs.mkdir(/* turbopackIgnore: true */ runPath, { recursive: true });
     
     // Output serialized session
-    await fs.writeFile(path.join(runPath, 'manifest.json'), JSON.stringify(session, null, 2), 'utf-8');
+    await fs.writeFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ runPath, 'manifest.json'), JSON.stringify(session, null, 2), 'utf-8');
     
     // Output raw logs for convenience
-    await fs.writeFile(path.join(runPath, 'browser_logs.txt'), session.logs.join('\n'), 'utf-8');
+    await fs.writeFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ runPath, 'browser_logs.txt'), session.logs.join('\n'), 'utf-8');
   } catch (err) {
     console.error('Failed to flush session state', err);
   }
@@ -123,14 +123,13 @@ export async function executeBrowserTest(
   ctx: ExecutorContext,
   args: Record<string, unknown>
 ): Promise<string> {
-  let playwright;
+  let chromium: typeof import('playwright').chromium;
   try {
-    playwright = require('playwright');
+    ({ chromium } = await import('playwright'));
   } catch {
     return 'ERROR: Playwright is not installed. Run: npm install playwright';
   }
 
-  const { chromium } = playwright;
   const scriptLines = (args.script as string) || '';
 
   if (!scriptLines) {
@@ -161,9 +160,9 @@ export async function executeBrowserTest(
 
   let browser;
   try {
-    const runPath = path.join(ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
-    const videoPath = path.join(runPath, 'video');
-    await fs.mkdir(videoPath, { recursive: true }).catch(() => {});
+    const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
+    const videoPath = path.join(/* turbopackIgnore: true */ runPath, 'video');
+    await fs.mkdir(/* turbopackIgnore: true */ videoPath, { recursive: true }).catch(() => {});
 
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ 
@@ -208,12 +207,12 @@ export async function executeBrowserTest(
       try {
         const buf = await page.screenshot({ type: 'jpeg', quality: 70 });
         
-        const runPath = path.join(ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
-        const screenshotsPath = path.join(runPath, 'screenshots');
-        await fs.mkdir(screenshotsPath, { recursive: true });
+        const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
+        const screenshotsPath = path.join(/* turbopackIgnore: true */ runPath, 'screenshots');
+        await fs.mkdir(/* turbopackIgnore: true */ screenshotsPath, { recursive: true });
         
         const fileName = `${stepId}.jpg`;
-        await fs.writeFile(path.join(screenshotsPath, fileName), buf);
+        await fs.writeFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ screenshotsPath, fileName), buf);
         
         screenshotData = `/api/preview?projectFolder=${encodeURIComponent(ctx.projectFolder)}&filePath=${encodeURIComponent('.orbitcode/runs/' + ctx.taskId + '/screenshots/' + fileName)}`;
       } catch {
@@ -282,7 +281,7 @@ export async function executeBrowserTest(
       evaluate: (fn: any, ...args: any[]) => page.evaluate(fn, ...args),
       locator: (s: string) => page.locator(s),
       getByText: (t: string) => page.getByText(t),
-      getByRole: (r: string, o?: any) => page.getByRole(r, o),
+      getByRole: (r: Parameters<typeof page.getByRole>[0], o?: Parameters<typeof page.getByRole>[1]) => page.getByRole(r, o),
       $: (s: string) => page.$(s),
       $$: (s: string) => page.$$(s),
       textContent: (s: string) => page.textContent(s),
@@ -303,11 +302,11 @@ export async function executeBrowserTest(
     const emitProgress = (type: string, detail: string) => {
       if (type === 'screenshot') {
         const stepId = nextStepId();
-        const runPath = path.join(ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
-        const screenshotsPath = path.join(runPath, 'screenshots');
-        fs.mkdir(screenshotsPath, { recursive: true }).then(() => {
+        const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
+        const screenshotsPath = path.join(/* turbopackIgnore: true */ runPath, 'screenshots');
+        fs.mkdir(/* turbopackIgnore: true */ screenshotsPath, { recursive: true }).then(() => {
           const buf = Buffer.from(detail, 'base64');
-          return fs.writeFile(path.join(screenshotsPath, `${stepId}.png`), buf);
+          return fs.writeFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ screenshotsPath, `${stepId}.png`), buf);
         }).catch(() => {});
         
         const s: BrowserStep = {
@@ -338,11 +337,11 @@ export async function executeBrowserTest(
     try {
       const finalBuf = await page.screenshot({ type: 'jpeg', quality: 70 });
       const stepId = nextStepId();
-      const runPath = path.join(ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
-      const screenshotsPath = path.join(runPath, 'screenshots');
-      await fs.mkdir(screenshotsPath, { recursive: true });
+      const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
+      const screenshotsPath = path.join(/* turbopackIgnore: true */ runPath, 'screenshots');
+      await fs.mkdir(/* turbopackIgnore: true */ screenshotsPath, { recursive: true });
       const fileName = `${stepId}.jpg`;
-      await fs.writeFile(path.join(screenshotsPath, fileName), finalBuf);
+      await fs.writeFile(/* turbopackIgnore: true */ path.join(/* turbopackIgnore: true */ screenshotsPath, fileName), finalBuf);
       
       const finalData = `/api/preview?projectFolder=${encodeURIComponent(ctx.projectFolder)}&filePath=${encodeURIComponent('.orbitcode/runs/' + ctx.taskId + '/screenshots/' + fileName)}`;
       

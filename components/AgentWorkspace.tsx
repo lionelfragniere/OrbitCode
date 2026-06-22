@@ -7,7 +7,7 @@ import {
   Send, Check, X, Code2, AlertTriangle,
   Compass, Hammer, ClipboardList, Target, Stethoscope, SearchCheck,
   Zap, Wrench, Package, Globe, GitMerge, CloudUpload,
-  ChevronDown, FileText, Edit, FolderOpen, Trash2, Loader2, FileCode, TerminalSquare
+  FileText, Edit, FolderOpen, Trash2, Loader2, FileCode, TerminalSquare
 } from 'lucide-react';
 import { ChatMessage, OpenFile, AgentTask, OrchestratorStageName } from '@/lib/types';
 
@@ -385,36 +385,6 @@ const ResultCard = memo(function ResultCard({ payload, task }: { payload: any, t
   );
 });
 
-/** Collapsible technical details block */
-function TechnicalDetails({ content }: { content: string }) {
-  const [open, setOpen] = useState(false);
-  if (!content || content.length < 20) return null;
-  return (
-    <div style={{ marginTop: '8px' }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          background: 'none', border: 'none', color: 'var(--text-disabled)',
-          fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-          padding: '4px 0',
-        }}
-      >
-        <ChevronDown size={10} style={{ transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
-        Technical details
-      </button>
-      {open && (
-        <pre style={{
-          fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)',
-          background: 'var(--bg-tertiary)', borderRadius: '4px', padding: '8px',
-          maxHeight: '200px', overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-        }}>
-          {content}
-        </pre>
-      )}
-    </div>
-  );
-}
-
 /** Live Activity Feed — shows recent tool operations in real-time */
 const LiveActivityFeed = memo(function LiveActivityFeed({ task }: { task: AgentTask }) {
   if (!task?.steps || task.steps.length === 0) return null;
@@ -621,7 +591,7 @@ const MessageBubble = memo(function MessageBubble({ msg }: { msg: ChatMessage })
 // ════════════════════════════════════════════
 
 export function AgentWorkspace({
-  isOpen, messages, task, isAgentRunning, isStreaming, onSend, onClear, onRunCommand, onResumeTask
+  isOpen, messages, task, isAgentRunning, onSend, onClear, onResumeTask
 }: AgentWorkspaceProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -663,7 +633,7 @@ export function AgentWorkspace({
       }
     });
     return cards;
-  }, [task?.steps]);
+  }, [task]);
 
   // Stable callback for send
   const handleSend = useCallback((text: string) => {

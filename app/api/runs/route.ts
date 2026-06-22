@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
     runs.sort((a, b) => b.timestamp - a.timestamp);
 
     return NextResponse.json({ runs });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to list runs' }, { status: 500 });
   }
 }

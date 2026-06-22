@@ -6,7 +6,7 @@
  * Returns structured PASS/FAIL with evidence for each check.
  */
 
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 

@@ -3,8 +3,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ChevronRight, File, Folder, FolderOpen, RefreshCw,
-  FileCode, FileJson, FileText, FileType, Database, Terminal, Image,
-  Plus, FolderPlus, ExternalLink, FolderSearch
+  FileCode, FileJson, FileText, FileType, Database, Terminal, Image as ImageIcon,
+  Plus, FolderPlus, FolderSearch
 } from 'lucide-react';
 import { FileNode } from '@/lib/types';
 
@@ -54,7 +54,7 @@ function getFileIconComponent(name: string, isDirectory: boolean, isOpen?: boole
     case 'gif':
     case 'svg':
     case 'webp':
-      return <Image size={15} style={{ color: '#fb923c' }} />;
+      return <ImageIcon size={15} style={{ color: '#fb923c' }} />;
     default:
       return <File size={15} style={{ color: '#9aa0b0' }} />;
   }
@@ -87,7 +87,6 @@ function ContextMenu({ x, y, node, projectFolder, onClose, onOpenInTerminal, onT
   }, [onClose]);
 
   const targetDir = node.isDirectory ? node.path : node.path.replace(/[/\\][^/\\]+$/, '');
-  const fullPath = `${projectFolder}/${node.path}`.replace(/\//g, '\\');
   const fullDir = `${projectFolder}/${targetDir}`.replace(/\//g, '\\');
 
   const handleOpenInTerminal = () => {
@@ -376,7 +375,6 @@ export default function FileExplorer({
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               onClick={() => {
                 // We pass a synthetic node to onFileSelect
-                // @ts-ignore - injecting extra properties specifically for page.tsx handling
                 onFileSelect({
                   path: `orbitcode://run/${run.id}`,
                   name: `Run: ${run.id.split('_')[1] || run.id}`,

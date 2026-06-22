@@ -32,7 +32,6 @@ interface ImportRef {
 // ════════════════════════════════════════════
 const EXTENSIONS_TO_SCAN = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'];
 const RESOLVE_EXTENSIONS = ['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.json', '.css'];
-const ASSET_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.webm', '.mp3'];
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.cache', 'coverage', '.orbitcode']);
 
 // Known external packages that should not be resolved on disk
@@ -90,7 +89,6 @@ const JSX_ASSET_RE = /(?:src|href)\s*=\s*['"](?:\.\/|\/)((?:public\/|src\/|asset
 
 function extractImports(content: string, filePath: string): ImportRef[] {
   const imports: ImportRef[] = [];
-  const lines = content.split('\n');
 
   // Helper: find line number for a match index
   function lineAt(idx: number): number {

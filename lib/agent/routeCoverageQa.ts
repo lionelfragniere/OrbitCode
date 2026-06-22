@@ -64,11 +64,6 @@ const PLACEHOLDER_PATTERNS = [
   /\bthis page is empty\b/i,
 ];
 
-// Common nav/sidebar text to exclude when measuring "real" content
-const NAV_TEXT_PATTERNS = [
-  /^(home|dashboard|settings|about|contact|login|logout|sign in|sign out|profile|menu|navigation|nav)$/i,
-];
-
 // ════════════════════════════════════════════
 //  Route Discovery
 // ════════════════════════════════════════════

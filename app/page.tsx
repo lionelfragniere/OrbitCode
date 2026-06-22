@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Settings, PanelLeftClose, PanelLeftOpen, MessageSquare,
-  MessageSquareOff, Zap, FolderOpen, Terminal, Save, ArrowLeft, Globe, GitCompare, Shield, FileText,
+  Zap, Terminal, ArrowLeft, Globe, GitCompare, Shield,
   ListChecks, ShieldCheck
 } from 'lucide-react';
 import { AppSettings, DEFAULT_SETTINGS, ChatMessage, OpenFile, FileNode, EditorContext, ChatMode, AgentTask, AgentStep } from '@/lib/types';
@@ -16,16 +16,12 @@ import CodeEditor from '@/components/CodeEditor';
 import { AgentWorkspace } from '@/components/AgentWorkspace';
 import SettingsModal from '@/components/SettingsModal';
 import StatusBar from '@/components/StatusBar';
-import WelcomeScreen from '@/components/WelcomeScreen';
 import TerminalPanel from '@/components/TerminalPanel';
 import FolderBrowser from '@/components/FolderBrowser';
 import Dashboard from '@/components/Dashboard';
 import PreviewPanel from '@/components/PreviewPanel';
 import GitPanel from '@/components/GitPanel';
-import TaskPanel from '@/components/TaskPanel';
-import ErrorBoundary from '@/components/ErrorBoundary';
 import DiffViewer from '@/components/DiffViewer';
-import ArtifactPanel from '@/components/ArtifactPanel';
 import AuditLogViewer from '@/components/AuditLogViewer';
 import AgentBrowserPanel from '@/components/AgentBrowserPanel';
 import RunViewer from '@/components/RunViewer';
@@ -66,7 +62,6 @@ export default function Home() {
 
   // ── Layout ──
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [chatOpen, setChatOpen] = useState(true);
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState('index.html');
@@ -92,7 +87,7 @@ export default function Home() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // ── Agent mode (agent-first by default) ──
-  const [chatMode, setChatMode] = useState<ChatMode>('agent');
+  const [chatMode] = useState<ChatMode>('agent');
   const [agentTask, setAgentTask] = useState<AgentTask | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
 
@@ -101,10 +96,10 @@ export default function Home() {
   const sessionIdRef = useRef(0);
 
   // ── Usage tracking (Phase 2) ──
-  const { trackUsage, getSummary: getUsageSummary } = useUsageTracking();
+  const { getSummary: getUsageSummary } = useUsageTracking();
 
   // ── Project Brain (Phase 2) ──
-  const { brain, addEntry: addBrainEntry, buildBrainContext } = useProjectBrain(projectPath);
+  const { brain } = useProjectBrain(projectPath);
 
   const editorContextRef = useRef<EditorContext | null>(null);
 
@@ -388,10 +383,8 @@ export default function Home() {
   const closeFile = (path: string) => {
     setOpenFiles((prev) => prev.filter((f) => f.path !== path));
     if (activeFilePath === path) {
-      setActiveFilePath((prev) => {
-        const remaining = openFiles.filter((f) => f.path !== path);
-        return remaining.length > 0 ? remaining[remaining.length - 1].path : null;
-      });
+      const remaining = openFiles.filter((f) => f.path !== path);
+      setActiveFilePath(remaining.length > 0 ? remaining[remaining.length - 1].path : null);
     }
   };
 

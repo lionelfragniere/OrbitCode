@@ -41,9 +41,9 @@ export interface ExecutorEvent {
 
 // Security: prevent path traversal
 function safePath(baseDir: string, relativePath: string): string | null {
-  const root = path.resolve(baseDir);
-  const resolved = path.resolve(root, relativePath);
-  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  const root = path.resolve(/* turbopackIgnore: true */ baseDir);
+  const resolved = path.resolve(/* turbopackIgnore: true */ root, relativePath);
+  const normalize = (p: string) => path.resolve(/* turbopackIgnore: true */ p).replace(/\\/g, '/').toLowerCase();
   const normalizedRoot = normalize(root);
   const normalizedTarget = normalize(resolved);
   if (normalizedTarget !== normalizedRoot && !normalizedTarget.startsWith(`${normalizedRoot}/`)) {
@@ -103,8 +103,8 @@ async function toolCreateFile(
   const absPath = safePath(ctx.projectFolder, filePath);
   if (!absPath) throw new Error(`Invalid path: ${filePath} (path traversal blocked)`);
 
-  await fs.mkdir(path.dirname(absPath), { recursive: true });
-  await fs.writeFile(absPath, content, 'utf-8');
+  await fs.mkdir(path.dirname(/* turbopackIgnore: true */ absPath), { recursive: true });
+  await fs.writeFile(/* turbopackIgnore: true */ absPath, content, 'utf-8');
 
   const sizeFmt = Buffer.byteLength(content, 'utf-8');
   return `Created file: ${filePath} (${sizeFmt} bytes)${description ? ` — ${description}` : ''}`;
@@ -124,14 +124,14 @@ async function toolEditFile(
   const absPath = safePath(ctx.projectFolder, filePath);
   if (!absPath) throw new Error(`Invalid path: ${filePath}`);
 
-  const current = await fs.readFile(absPath, 'utf-8');
+  const current = await fs.readFile(/* turbopackIgnore: true */ absPath, 'utf-8');
   
   if (!current.includes(search)) {
     return `ERROR: Could not find the search string in ${filePath}. The text does not match. Use read_file to see the current content.`;
   }
 
   const updated = current.replace(search, replace);
-  await fs.writeFile(absPath, updated, 'utf-8');
+  await fs.writeFile(/* turbopackIgnore: true */ absPath, updated, 'utf-8');
   
   return `Edited file: ${filePath} — replaced ${search.length} chars with ${replace.length} chars`;
 }
@@ -149,7 +149,7 @@ async function toolReadFile(
   if (!absPath) throw new Error(`Invalid path: ${filePath}`);
 
   try {
-    const content = await fs.readFile(absPath, 'utf-8');
+    const content = await fs.readFile(/* turbopackIgnore: true */ absPath, 'utf-8');
     // Truncate very large files
     if (content.length > 100000) {
       return `File: ${filePath} (truncated to first 100KB)\n\n${content.substring(0, 100000)}\n\n... (${content.length - 100000} more characters)`;
@@ -173,12 +173,12 @@ async function toolDeleteFile(
   if (!absPath) throw new Error(`Invalid path: ${filePath}`);
 
   try {
-    const stat = await fs.stat(absPath);
+    const stat = await fs.stat(/* turbopackIgnore: true */ absPath);
     if (stat.isDirectory()) {
-      await fs.rm(absPath, { recursive: true });
+      await fs.rm(/* turbopackIgnore: true */ absPath, { recursive: true });
       return `Deleted directory: ${filePath}`;
     } else {
-      await fs.unlink(absPath);
+      await fs.unlink(/* turbopackIgnore: true */ absPath);
       return `Deleted file: ${filePath}`;
     }
   } catch {
@@ -212,12 +212,12 @@ async function toolCopyAsset(
 
   try {
     // Verify source exists
-    await fs.access(asset.source);
+    await fs.access(/* turbopackIgnore: true */ asset.source);
     // Ensure destination directory exists
-    await fs.mkdir(path.dirname(absPath), { recursive: true });
+    await fs.mkdir(path.dirname(/* turbopackIgnore: true */ absPath), { recursive: true });
     // Copy binary file
-    await fs.copyFile(asset.source, absPath);
-    const stat = await fs.stat(absPath);
+    await fs.copyFile(/* turbopackIgnore: true */ asset.source, absPath);
+    const stat = await fs.stat(/* turbopackIgnore: true */ absPath);
     return `Copied asset "${assetId}" → ${destination} (${stat.size} bytes) — ${asset.description}`;
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Copy failed';
@@ -355,7 +355,7 @@ async function toolListFiles(
   if (!absPath) throw new Error(`Invalid path: ${dirPath}`);
 
   try {
-    const entries = await fs.readdir(absPath, { withFileTypes: true });
+    const entries = await fs.readdir(/* turbopackIgnore: true */ absPath, { withFileTypes: true });
     const filtered = entries.filter((e) => !IGNORED.has(e.name) && !e.name.startsWith('.'));
     
     const lines = filtered
@@ -391,19 +391,19 @@ async function toolSearchFiles(
     if (results.length >= maxResults) return;
     
     try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const entries = await fs.readdir(/* turbopackIgnore: true */ dir, { withFileTypes: true });
       for (const entry of entries) {
         if (results.length >= maxResults) return;
         if (IGNORED.has(entry.name) || entry.name.startsWith('.')) continue;
 
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.join(/* turbopackIgnore: true */ dir, entry.name);
         const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
         if (entry.isDirectory()) {
           await searchDir(fullPath, relativePath);
         } else {
           try {
-            const content = await fs.readFile(fullPath, 'utf-8');
+            const content = await fs.readFile(/* turbopackIgnore: true */ fullPath, 'utf-8');
             const lines = content.split('\n');
             for (let i = 0; i < lines.length; i++) {
               if (lines[i].includes(query)) {
