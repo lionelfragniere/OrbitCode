@@ -178,6 +178,7 @@ async function runGuiSmoke(project) {
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.body.innerText.includes('OrbitCode'), null, { timeout: 15000 });
     let body = await page.locator('body').innerText();
+    if (/[\u00e2\ufffd\u00c3\u00c2]/.test(body)) fail('GUI contains mojibake text');
     const nestedButtonLikes = await page.locator('button button, [role="button"] button').count();
     if (nestedButtonLikes) fail(`GUI has nested button-like controls: ${nestedButtonLikes}`);
 

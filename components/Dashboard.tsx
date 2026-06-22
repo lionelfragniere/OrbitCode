@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Zap, FolderOpen, Plus, GitBranch, Clock, Folder,
-  Search, Shield, ExternalLink, ChevronRight, Settings, Trash2, RefreshCw
+  Search, Shield, ExternalLink, ChevronRight, Settings, Trash2, RefreshCw, X
 } from 'lucide-react';
 
 interface UserConfig {
@@ -183,7 +183,7 @@ export default function Dashboard({
           }}>
             <Shield size={14} style={{ flexShrink: 0, marginTop: '1px' }} />
             <span>
-              <strong>Heads up</strong> — OrbitCode can run commands on your real machine.
+              <strong>Heads up</strong> - OrbitCode can run commands on your real machine.
               Terminal execution is not sandboxed.
               Always review actions before approving them.
             </span>
@@ -247,7 +247,7 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* Main content — only if workspace is set */}
+        {/* Main content - only if workspace is set */}
         {!needsWorkspace && (
           <>
             {/* Actions bar */}
@@ -294,8 +294,8 @@ export default function Dashboard({
                   <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
                     Create New Project
                   </span>
-                  <button className="icon-btn" onClick={() => setShowCreateNew(false)}>
-                    <Trash2 size={12} />
+                  <button className="icon-btn" onClick={() => setShowCreateNew(false)} title="Close">
+                    <X size={12} />
                   </button>
                 </div>
                 <div className="field">
@@ -317,7 +317,7 @@ export default function Dashboard({
                   <label className="field__label">
                     <GitBranch size={13} />
                     GitHub Remote
-                    <span className="field__hint">(optional — connect to GitHub)</span>
+                    <span className="field__hint">(optional - connect to GitHub)</span>
                   </label>
                   <input
                     className="field__input"
@@ -399,7 +399,7 @@ export default function Dashboard({
                 <div className="empty-state" style={{ padding: '40px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
                   <FolderOpen size={28} className="empty-state__icon" />
                   <span className="empty-state__text">
-                    {filter ? 'No matching projects' : 'No projects yet — create one above!'}
+                    {filter ? 'No matching projects' : 'No projects yet - create one above!'}
                   </span>
                 </div>
               ) : (
