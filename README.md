@@ -115,6 +115,20 @@ npm.cmd run lint
 
 Current note: `npm.cmd run build` passes. `npm.cmd run lint` still reports older lint issues in existing files that are outside the OrbitCode provider/memory rename path.
 
+With OrbitCode running at `http://localhost:3000`, the local smoke harness checks the Monthey crop-intel project, core APIs, Git state, and the real GUI preview:
+
+```bat
+node scripts\orbitcode-smoke.mjs
+```
+
+Optional local-model checks:
+
+```bat
+set ORBITCODE_SMOKE_PROVIDER=1
+set ORBITCODE_SMOKE_AGENT=1
+node scripts\orbitcode-smoke.mjs
+```
+
 ## Publishing
 
 This project is intended to be pushed to a private GitHub repository under `lionelfragniere` once the local verification pass is complete.

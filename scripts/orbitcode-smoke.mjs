@@ -1,0 +1,273 @@
+#!/usr/bin/env node
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const base = process.env.ORBITCODE_BASE || 'http://localhost:3000';
+const outputPath = process.env.ORBITCODE_SMOKE_OUT || path.join(repoRoot, '.orbitcode', 'qa', 'orbitcode-smoke.json');
+const runGui = process.env.ORBITCODE_SMOKE_GUI !== '0';
+const runProvider = process.env.ORBITCODE_SMOKE_PROVIDER === '1';
+const runAgent = process.env.ORBITCODE_SMOKE_AGENT === '1';
+const providerBaseUrl = process.env.ORBITCODE_SMOKE_PROVIDER_BASE || 'http://localhost:11434/v1';
+const providerModel = process.env.ORBITCODE_SMOKE_MODEL || 'qwen3:14b';
+
+const checks = [];
+
+function slash(p) {
+  return p.replace(/\\/g, '/');
+}
+
+function samePath(a, b) {
+  return slash(path.resolve(a)).toLowerCase() === slash(path.resolve(b)).toLowerCase();
+}
+
+function fail(message) {
+  throw new Error(message);
+}
+
+async function check(name, fn) {
+  const startedAt = Date.now();
+  try {
+    const details = await fn();
+    checks.push({ name, pass: true, durationMs: Date.now() - startedAt, details: details || '' });
+  } catch (error) {
+    checks.push({
+      name,
+      pass: false,
+      durationMs: Date.now() - startedAt,
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function findMontheyProject() {
+  if (process.env.ORBITCODE_SMOKE_PROJECT) return path.resolve(process.env.ORBITCODE_SMOKE_PROJECT);
+  const workspace = process.env.ORBITCODE_WORKSPACE || path.join(repoRoot, 'D');
+  const entries = await fs.readdir(workspace, { withFileTypes: true });
+  const candidates = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith('monthey-crop-intel-')) continue;
+    const fullPath = path.join(workspace, entry.name);
+    const stat = await fs.stat(fullPath);
+    candidates.push({ path: fullPath, mtimeMs: stat.mtimeMs });
+  }
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  if (!candidates[0]) fail(`No monthey-crop-intel-* project found in ${workspace}`);
+  return candidates[0].path;
+}
+
+function url(pathname, params = {}) {
+  const u = new URL(pathname, base);
+  for (const [key, value] of Object.entries(params)) u.searchParams.set(key, value);
+  return u;
+}
+
+async function request(pathname, options = {}, params = {}) {
+  const res = await fetch(url(pathname, params), options);
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    // Plain-text endpoints are fine.
+  }
+  return { res, text, json };
+}
+
+function attr(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function runGuiSmoke(project) {
+  const projectName = path.basename(project);
+  const screenshotPath = outputPath.replace(/\.json$/i, '.png');
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1365, height: 768 } });
+  const consoleErrors = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message));
+
+  try {
+    await page.goto(base, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => document.body.innerText.includes('OrbitCode'), null, { timeout: 15000 });
+    let body = await page.locator('body').innerText();
+
+    if (!body.includes(projectName) || !body.includes('index.html')) {
+      const opener = page.locator(`[title="Open ${attr(projectName)}"]`);
+      if (await opener.count() < 1) fail(`Project card not visible: ${projectName}`);
+      await opener.first().click();
+      await page.waitForFunction((name) => document.body.innerText.includes(name), projectName, { timeout: 15000 });
+      await page.waitForFunction(() => document.body.innerText.includes('index.html'), null, { timeout: 15000 });
+      body = await page.locator('body').innerText();
+    }
+
+    for (const marker of [projectName, 'index.html', 'gee', 'OrbitCode Agent']) {
+      if (!body.includes(marker)) fail(`GUI missing ${marker}`);
+    }
+
+    const previewToggle = page.locator('[title="Toggle Preview"]');
+    if (await previewToggle.count() !== 1) fail('Preview toggle not visible');
+    await previewToggle.click();
+    const previewBody = page.frameLocator('iframe[title="Preview"]').locator('body');
+    const previewText = await previewBody.innerText({ timeout: 15000 });
+    if (!previewText.includes('Crop identification for Monthey')) fail('Preview iframe did not render Monthey app');
+    if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(`${body}\n${previewText}`)) {
+      fail('GUI contains runtime error text');
+    }
+
+    await page.screenshot({ path: screenshotPath, fullPage: false });
+    if (consoleErrors.length) fail(`Console/page errors: ${consoleErrors.slice(0, 3).join(' | ')}`);
+    return `screenshot=${screenshotPath}`;
+  } finally {
+    await browser.close();
+  }
+}
+
+async function main() {
+  const project = await findMontheyProject();
+  const workspace = process.env.ORBITCODE_WORKSPACE || path.dirname(project);
+  const projectFolder = slash(project);
+
+  await check('server responds', async () => {
+    const { res, text } = await request('/');
+    if (!res.ok || !text.includes('OrbitCode')) fail(`HTTP ${res.status}`);
+    return `base=${base}`;
+  });
+
+  await check('projects API lists Monthey project', async () => {
+    const { json } = await request('/api/projects', {}, { workspace });
+    const found = json?.projects?.find((p) => samePath(p.path, project));
+    if (!found?.isGitRepo) fail('Project missing or not reported as its own git repo');
+    return `branch=${found.branch || ''}, fileCount=${found.fileCount}`;
+  });
+
+  await check('files API tree and read work', async () => {
+    const tree = await request('/api/files', {}, { projectFolder });
+    const names = (tree.json?.tree || []).map((node) => node.name);
+    for (const expected of ['docs', 'gee', 'pages', 'public', 'src', 'tests', 'index.html', 'README.md', 'styles.css']) {
+      if (!names.includes(expected)) fail(`Missing ${expected}`);
+    }
+    const file = await request('/api/files', {}, { projectFolder, filePath: 'gee/monthey_crop_workflow.py' });
+    if (!file.json?.content?.includes('Earth Engine') || !file.json.content.includes('Monthey')) {
+      fail('GEE workflow markers missing');
+    }
+    return names.join(',');
+  });
+
+  await check('files API rejects traversal', async () => {
+    const { res } = await request('/api/files', {}, { projectFolder, filePath: '../package.json' });
+    if (res.status !== 403) fail(`Expected 403, got ${res.status}`);
+  });
+
+  await check('preview API serves app and public fallback', async () => {
+    const index = await request('/api/preview', {}, { projectFolder, filePath: 'index.html' });
+    if (!index.res.ok || !index.text.includes('orbitcode:preview-location') || !index.text.includes('Monthey Crop Intel')) {
+      fail(`Index preview failed: HTTP ${index.res.status}`);
+    }
+    const mark = await request('/api/preview', {}, { projectFolder, filePath: 'mark.svg' });
+    const type = mark.res.headers.get('content-type') || '';
+    if (!mark.res.ok || !type.includes('image/svg+xml')) fail(`Public asset failed: HTTP ${mark.res.status}, ${type}`);
+    const traversal = await request('/api/preview', {}, { projectFolder, filePath: '../package.json' });
+    if (traversal.res.status !== 403) fail(`Preview traversal expected 403, got ${traversal.res.status}`);
+    return `assetType=${type}`;
+  });
+
+  await check('git API state and target validation work', async () => {
+    const state = await request('/api/git', {}, { cwd: projectFolder, action: 'state' });
+    if (!state.json?.isRepo || !state.json.branch) fail('Git state missing repo/branch');
+    const bad = await request('/api/git', {}, { cwd: projectFolder, action: 'diff', target: '--output=C:/tmp/nope' });
+    if (bad.res.status !== 400) fail(`Bad diff target expected 400, got ${bad.res.status}`);
+    return `branch=${state.json.branch}`;
+  });
+
+  await check('browser-session stop is idempotent', async () => {
+    const { json } = await request('/api/browser-session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'stop' }),
+    });
+    if (!json?.success) fail('Stop did not return success');
+  });
+
+  await check('Monthey project logic smoke passes', async () => {
+    const result = spawnSync(process.execPath, ['tests/logic-smoke.mjs'], { cwd: project, encoding: 'utf8' });
+    if (result.status !== 0) fail((result.stderr || result.stdout || 'logic smoke failed').trim());
+    return result.stdout.trim();
+  });
+
+  if (runGui) {
+    await check('GUI opens project and renders preview', () => runGuiSmoke(project));
+  }
+
+  if (runProvider) {
+    await check('provider test returns visible text', async () => {
+      const { res, json, text } = await request('/api/providers/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ providerKind: 'ollama', baseUrl: providerBaseUrl, model: providerModel }),
+      });
+      if (!res.ok || !json?.ok || !String(json.text || '').trim()) fail(text || `HTTP ${res.status}`);
+      return `${json.providerKind}/${json.model}: ${json.text}`;
+    });
+  }
+
+  if (runAgent) {
+    await check('agent SSE list-files smoke passes', async () => {
+      const { res, text } = await request('/api/agent', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Run a read-only smoke test: list files in the project root using list_files once, then call task_complete with exactly "Agent smoke listed files". Do not write files or run commands.',
+          projectFolder,
+          projectContext: 'Read-only OrbitCode smoke test project.',
+          providerKind: 'ollama',
+          baseUrl: providerBaseUrl,
+          model: providerModel,
+          maxAgentTurns: 4,
+          orchestrated: false,
+        }),
+      });
+      if (!res.ok) fail(`HTTP ${res.status}: ${text.slice(0, 500)}`);
+      const events = text.split(/\r?\n/)
+        .filter((line) => line.startsWith('data: '))
+        .map((line) => JSON.parse(line.slice(6)));
+      const types = events.map((event) => event.type);
+      const tools = events.map((event) => event.toolName).filter(Boolean);
+      if (!types.includes('tool_call') || !tools.includes('list_files') || !text.includes('Agent smoke listed files')) {
+        fail(`Agent smoke missing expected events: ${types.join(',')}`);
+      }
+      return `events=${events.length}`;
+    });
+  }
+
+  const summary = {
+    ok: checks.every((item) => item.pass),
+    base,
+    project: projectFolder,
+    checkedAt: new Date().toISOString(),
+    checks,
+  };
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, JSON.stringify(summary, null, 2), 'utf8');
+  console.log(JSON.stringify(summary, null, 2));
+  if (!summary.ok) process.exitCode = 1;
+}
+
+main().catch(async (error) => {
+  const summary = {
+    ok: false,
+    base,
+    checkedAt: new Date().toISOString(),
+    fatal: error instanceof Error ? error.message : String(error),
+    checks,
+  };
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, JSON.stringify(summary, null, 2), 'utf8');
+  console.error(JSON.stringify(summary, null, 2));
+  process.exitCode = 1;
+});

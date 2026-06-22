@@ -90,6 +90,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 2026-06-22: Monthey GUI hardening added keyboard/ARIA activation to dashboard project cards and removed same-origin preview sandboxing via a minimal postMessage location bridge.
 - 2026-06-22: Secondary IDE panel smoke test restored visible Audit Log rendering and made the Agent Browser toolbar button open/focus the live browser tab.
 - 2026-06-22: Agent/provider smoke test made provider connection tests reject empty model output, hardened executor/git path handling, and added `.orbitcode/` to new project git ignores.
+- 2026-06-22: Added `scripts/orbitcode-smoke.mjs` to repeat the Monthey project API, Git, preview, GUI, optional provider, and optional agent smoke checks against a running OrbitCode server.
 - 2026-05-16: Completed OrbitCode adaptation, removed legacy corporate branding, added beginner mode, introduced pluggable provider architecture, added MemPalace-backed memory service, moved storage to `.orbitcode` with legacy local-data fallback, and replaced the launcher with a local-first single-file Windows script.
 - 2026-05-16: Launcher now silently installs `uv` and MemPalace when missing; Ollama remains opt-in with UI prompts because local model downloads can be large.
 
