@@ -192,12 +192,22 @@ async function runGuiSmoke(project) {
       if (!body.includes(marker)) fail(`GUI missing ${marker}`);
     }
 
+    const indexFile = page.locator('aside').getByRole('button', { name: 'index.html' });
+    if (await indexFile.count() !== 1) fail('File tree index.html button not visible');
+    await indexFile.click();
+
     const previewToggle = page.locator('[title="Toggle Preview"]');
     if (await previewToggle.count() !== 1) fail('Preview toggle not visible');
-    await previewToggle.click();
+    const previewFrame = page.locator('iframe[title="Preview"]');
+    if (await previewFrame.count() === 0) {
+      await previewToggle.click();
+    }
+    await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
     const previewBody = page.frameLocator('iframe[title="Preview"]').locator('body');
     const previewText = await previewBody.innerText({ timeout: 15000 });
-    if (!previewText.includes('Crop identification for Monthey')) fail('Preview iframe did not render Monthey app');
+    if (!previewText.includes('Crop identification for Monthey')) {
+      fail(`Preview iframe did not render Monthey app: ${previewText.slice(0, 300)}`);
+    }
     if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(`${body}\n${previewText}`)) {
       fail('GUI contains runtime error text');
     }
@@ -276,6 +286,17 @@ async function main() {
     if (!json?.success) fail('Stop did not return success');
   });
 
+  await check('preflight API reports runnable workspace', async () => {
+    const { res, json, text } = await request('/api/preflight', {}, { projectFolder });
+    if (!res.ok) fail(`HTTP ${res.status}: ${text.slice(0, 500)}`);
+    const checks = new Map((json?.checks || []).map((item) => [item.id, item]));
+    for (const id of ['node', 'git', 'workspace', 'runs']) {
+      const item = checks.get(id);
+      if (!item || item.level === 'fail') fail(`Preflight ${id} failed or missing`);
+    }
+    return `overall=${json.overall}, pass=${json.summary?.pass}, warn=${json.summary?.warn}, fail=${json.summary?.fail}`;
+  });
+
   if (runAgentBrowser) {
     await check('agent browser tool drives observable preview', async () => {
       const provider = await startStubProvider(projectFolder);
@@ -321,6 +342,25 @@ async function main() {
       } finally {
         await provider.close();
       }
+    });
+
+    await check('runs API exposes browser evidence', async () => {
+      const list = await request('/api/runs', {}, { projectFolder });
+      const browserRun = list.json?.runs?.find((run) => run.type === 'browser' && run.status === 'complete' && run.stepCount >= 2);
+      if (!browserRun) fail('No completed browser run listed');
+
+      const detail = await request('/api/runs', {}, { projectFolder, runId: browserRun.id });
+      if (!detail.res.ok) fail(`Run detail HTTP ${detail.res.status}`);
+      if (!detail.json?.manifest?.sessionId || detail.json.manifest.status !== 'complete') {
+        fail('Run detail missing completed browser manifest');
+      }
+      if (!Array.isArray(detail.json.screenshots) || detail.json.screenshots.length < 2) {
+        fail('Run detail missing browser screenshots');
+      }
+      if (!String(detail.json.rawLogs || '').includes('agent-browser-smoke-ok')) {
+        fail('Run detail missing browser log');
+      }
+      return `run=${browserRun.id}, screenshots=${detail.json.screenshots.length}`;
     });
   }
 
