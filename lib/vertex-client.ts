@@ -5,6 +5,9 @@
  * 
  * Model configurable via GEMINI_MODEL env var (default: gemini-2.5-flash).
  */
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { PONYTAIL_SYSTEM_INSTRUCTION } from '@/lib/agent/ponytail';
 
@@ -36,9 +39,7 @@ export function createVertexClient(project: string, location: string = 'us-centr
  */
 export function getVertexClient(): { client: GoogleGenAI; modelId: string } | null {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    const configPath = path.join(require('os').homedir(), '.orbitcode', 'config.json');
+    const configPath = path.join(os.homedir(), '.orbitcode', 'config.json');
     const raw = fs.readFileSync(configPath, 'utf-8');
     const config = JSON.parse(raw);
     const project = config.gcpProject || process.env.GCP_PROJECT;

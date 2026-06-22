@@ -1,5 +1,7 @@
 /* OrbitCode — Git Repository State Inspector */
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { RepoState, FileChange } from '@/lib/types';
 
 function git(args: string, cwd: string): { ok: boolean; out: string } {
@@ -21,18 +23,17 @@ function gitPath(cwd: string, subpath: string): string | null {
   const r = git(`rev-parse --git-path ${subpath}`, cwd);
   if (!r.ok) return null;
   // git rev-parse --git-path returns relative to cwd
-  const path = require('path');
   return path.resolve(cwd, r.out);
 }
 
 function fileExists(p: string | null): boolean {
   if (!p) return false;
-  try { require('fs').statSync(p); return true; } catch { return false; }
+  try { fs.statSync(p); return true; } catch { return false; }
 }
 
 function dirExists(p: string | null): boolean {
   if (!p) return false;
-  try { return require('fs').statSync(p).isDirectory(); } catch { return false; }
+  try { return fs.statSync(p).isDirectory(); } catch { return false; }
 }
 
 function parseStatusV2(raw: string): { staged: FileChange[]; unstaged: FileChange[]; untracked: string[]; conflicted: string[] } {

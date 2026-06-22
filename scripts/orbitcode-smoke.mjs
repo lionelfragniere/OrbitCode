@@ -194,7 +194,16 @@ async function runGuiSmoke(project) {
 
     const indexFile = page.locator('aside').getByRole('button', { name: 'index.html' });
     if (await indexFile.count() !== 1) fail('File tree index.html button not visible');
-    await indexFile.click();
+    await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/api/files') && res.url().includes('filePath=index.html'), { timeout: 20000 }),
+      indexFile.click(),
+    ]);
+    try {
+      await page.waitForFunction(() => /Monthey\s+Crop\s+Intel/.test(document.body.innerText), null, { timeout: 15000 });
+    } catch {
+      const text = await page.locator('body').innerText({ timeout: 5000 });
+      fail(`index.html did not open in editor: ${text.slice(0, 500)}`);
+    }
 
     const previewToggle = page.locator('[title="Toggle Preview"]');
     if (await previewToggle.count() !== 1) fail('Preview toggle not visible');
@@ -203,9 +212,14 @@ async function runGuiSmoke(project) {
       await previewToggle.click();
     }
     await previewFrame.waitFor({ state: 'attached', timeout: 15000 });
-    const previewBody = page.frameLocator('iframe[title="Preview"]').locator('body');
-    const previewText = await previewBody.innerText({ timeout: 15000 });
-    if (!previewText.includes('Crop identification for Monthey')) {
+    await page.waitForFunction(() => {
+      const iframe = document.querySelector('iframe[title="Preview"]');
+      return iframe?.getAttribute('src')?.includes('filePath=index.html');
+    }, null, { timeout: 15000 });
+    const preview = page.frameLocator('iframe[title="Preview"]');
+    await preview.getByText('Crop identification for Monthey').waitFor({ timeout: 20000 });
+    const previewText = await preview.locator('body').innerText({ timeout: 5000 });
+    if (!/Crop\s+identification\s+for\s+Monthey/.test(previewText)) {
       fail(`Preview iframe did not render Monthey app: ${previewText.slice(0, 300)}`);
     }
     if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(`${body}\n${previewText}`)) {

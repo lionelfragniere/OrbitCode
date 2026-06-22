@@ -106,7 +106,7 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
             />
           ) : (
             <iframe
-              key={key}
+              key={`${url}:${key}`}
               ref={iframeRef}
               src={url}
               className="preview-iframe"

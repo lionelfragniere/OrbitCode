@@ -6,8 +6,17 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import type { Browser, ConsoleMessage, Page, Request } from 'playwright';
 import type { ExecutorContext } from './executor';
 import type { BrowserStep, BrowserSessionState } from '../types';
+
+type PageGotoOptions = Parameters<Page['goto']>[1];
+type PageClickOptions = Parameters<Page['click']>[1];
+type PageFillOptions = Parameters<Page['fill']>[2];
+type PageTypeOptions = Parameters<Page['type']>[2];
+type PageWaitForSelectorOptions = Parameters<Page['waitForSelector']>[1];
+type PageScreenshotOptions = Parameters<Page['screenshot']>[0];
+type PageEvaluateFunction = Parameters<Page['evaluate']>[0];
 
 // ════════════════════════════════════════════
 //  Session state — keyed by project folder for isolation
@@ -163,7 +172,7 @@ export async function executeBrowserTest(
     detail: JSON.stringify({ sessionId: session.sessionId, status: 'running' }),
   });
 
-  let browser;
+  let browser: Browser | undefined;
   try {
     const runPath = path.join(/* turbopackIgnore: true */ ctx.projectFolder, '.orbitcode', 'runs', ctx.taskId);
     const videoPath = path.join(/* turbopackIgnore: true */ runPath, 'video');
@@ -177,7 +186,7 @@ export async function executeBrowserTest(
     const page = await context.newPage();
 
     // ── Console + error capture ──
-    page.on('console', (msg: any) => {
+    page.on('console', (msg: ConsoleMessage) => {
       const entry = `[${msg.type()}] ${msg.text()}`;
       session.logs.push(entry);
       if (msg.type() === 'error' || msg.type() === 'warning') {
@@ -185,14 +194,14 @@ export async function executeBrowserTest(
       }
     });
 
-    page.on('pageerror', (err: any) => {
+    page.on('pageerror', (err: Error) => {
       const entry = `[PageError] ${err.message}`;
       session.logs.push(entry);
       session.errors.push(entry);
     });
 
     // ── Network failure capture ──
-    page.on('requestfailed', (req: any) => {
+    page.on('requestfailed', (req: Request) => {
       const entry = `[NetworkFail] ${req.method()} ${req.url()} — ${req.failure()?.errorText || 'unknown'}`;
       session.logs.push(entry);
       session.errors.push(entry);
@@ -239,25 +248,27 @@ export async function executeBrowserTest(
 
     // ── Wrapped page methods for step tracking ──
     const wrappedPage = {
-      goto: async (url: string, options?: any) => {
+      goto: async (url: string, options?: PageGotoOptions) => {
         await captureStep('navigate', `Navigating to ${url}`);
         await page.goto(url, options);
         await captureStep('navigate', `Loaded ${url}`);
       },
-      click: async (selector: string, options?: any) => {
+      click: async (selector: string, options?: PageClickOptions) => {
         await page.click(selector, options);
         await captureStep('click', `Clicked: ${selector}`);
       },
-      fill: async (selector: string, value: string, options?: any) => {
+      fill: async (selector: string, value: string, options?: PageFillOptions) => {
         await page.fill(selector, value, options);
         await captureStep('type', `Typed "${value.substring(0, 30)}${value.length > 30 ? '...' : ''}" into ${selector}`);
       },
-      type: async (selector: string, text: string, options?: any) => {
+      type: async (selector: string, text: string, options?: PageTypeOptions) => {
         await page.type(selector, text, options);
         await captureStep('type', `Typed "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}" into ${selector}`);
       },
-      waitForSelector: async (selector: string, options?: any) => {
-        const el = await page.waitForSelector(selector, options);
+      waitForSelector: async (selector: string, options?: PageWaitForSelectorOptions) => {
+        const el = options === undefined
+          ? await page.waitForSelector(selector)
+          : await page.waitForSelector(selector, options);
         await captureStep('wait', `Found: ${selector}`);
         return el;
       },
@@ -265,7 +276,7 @@ export async function executeBrowserTest(
         await page.waitForTimeout(ms);
         await captureStep('wait', `Waited ${ms}ms`);
       },
-      screenshot: async (options?: any) => {
+      screenshot: async (options?: PageScreenshotOptions) => {
         const buf = await page.screenshot(options);
         const data = 'data:image/png;base64,' + buf.toString('base64');
         const step: BrowserStep = {
@@ -283,7 +294,7 @@ export async function executeBrowserTest(
       url: () => page.url(),
       content: () => page.content(),
       title: () => page.title(),
-      evaluate: (fn: any, ...args: any[]) => page.evaluate(fn, ...args),
+      evaluate: (fn: PageEvaluateFunction, arg?: unknown) => page.evaluate(fn, arg),
       locator: (s: string) => page.locator(s),
       getByText: (t: string) => page.getByText(t),
       getByRole: (r: Parameters<typeof page.getByRole>[0], o?: Parameters<typeof page.getByRole>[1]) => page.getByRole(r, o),
@@ -394,13 +405,14 @@ export async function executeBrowserTest(
 
     return summary;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (browser) {
       try { await browser.close(); } catch { /* ignore */ }
     }
+    const message = error instanceof Error ? error.message : String(error);
     session.status = 'failed';
     session.completedAt = Date.now();
-    session.errors.push(`[Fatal] ${error.message}`);
+    session.errors.push(`[Fatal] ${message}`);
 
     ctx.onProgress?.({
       type: 'tool_end',
@@ -408,10 +420,10 @@ export async function executeBrowserTest(
       detail: JSON.stringify({
         sessionId: session.sessionId,
         status: 'failed',
-        error: error.message,
+        error: message,
       }),
     });
 
-    return `ERROR during browser execution: ${error.message}\n\nLogs:\n${session.logs.join('\n')}`;
+    return `ERROR during browser execution: ${message}\n\nLogs:\n${session.logs.join('\n')}`;
   }
 }

@@ -1,5 +1,7 @@
 /* OrbitCode — Git Action Evaluator & Executor */
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 import type { RepoState, GitAction, ActionEvaluation, ActionResult, RecoveryAction } from '@/lib/types';
 import { inspectRepoState, classifyGitError } from './gitInspect';
 
@@ -565,8 +567,6 @@ export async function executeAction(
         const lockPath = git('rev-parse --git-path index.lock', cwd);
         if (lockPath.ok) {
           try {
-            const path = require('path');
-            const fs = require('fs');
             fs.unlinkSync(path.resolve(cwd, lockPath.out));
             return { success: true, output: 'Lock file removed.' };
           } catch (e) {
