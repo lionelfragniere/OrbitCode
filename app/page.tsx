@@ -1214,7 +1214,7 @@ export default function Home() {
           <div className="toast-container">
             {toasts.map((t) => (
               <div key={t.id} className={`toast toast--${t.type}`}>
-                {t.type === 'success' ? '✓' : '✗'} {t.message}
+                {t.type === 'success' ? 'Success:' : t.type === 'error' ? 'Error:' : 'Info:'} {t.message}
               </div>
             ))}
           </div>
@@ -1234,32 +1234,33 @@ export default function Home() {
             setView('dashboard');
           }}
           title="Back to Dashboard"
+          aria-label="Back to Dashboard"
           style={{ marginRight: '4px' }}
         >
           <ArrowLeft size={16} />
         </button>
         <div className="ide-toolbar__brand" title={projectName}>
           <Zap size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>OrbitCode · {projectName}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>OrbitCode - {projectName}</span>
         </div>
         <div className="ide-toolbar__spacer" />
         <div className="ide-toolbar__actions">
           {!config.beginnerMode && (
             <>
-              <button className={`icon-btn ${sidebarOpen ? 'icon-btn--active' : ''}`} onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Explorer (Ctrl+B)">
+              <button className={`icon-btn ${sidebarOpen ? 'icon-btn--active' : ''}`} onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Explorer (Ctrl+B)" aria-label="Toggle Explorer" aria-pressed={sidebarOpen}>
                 {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
               </button>
-              <button className={`icon-btn ${terminalOpen ? 'icon-btn--active' : ''}`} onClick={() => setTerminalOpen(!terminalOpen)} title="Toggle Terminal (Ctrl+`)">
+              <button className={`icon-btn ${terminalOpen ? 'icon-btn--active' : ''}`} onClick={() => setTerminalOpen(!terminalOpen)} title="Toggle Terminal (Ctrl+`)" aria-label="Toggle Terminal" aria-pressed={terminalOpen}>
                 <Terminal size={16} />
               </button>
             </>
           )}
-          <button className={`icon-btn ${previewOpen ? 'icon-btn--active' : ''}`} onClick={() => setPreviewOpen(!previewOpen)} title="Toggle Preview">
+          <button className={`icon-btn ${previewOpen ? 'icon-btn--active' : ''}`} onClick={() => setPreviewOpen(!previewOpen)} title="Toggle Preview" aria-label="Toggle Preview" aria-pressed={previewOpen}>
             <Globe size={16} />
           </button>
           {!config.beginnerMode && (
             <>
-              <button className="icon-btn" onClick={() => setShowDiffViewer(true)} title="View Changes (Diff)">
+              <button className="icon-btn" onClick={() => setShowDiffViewer(true)} title="View Changes (Diff)" aria-label="View Changes">
                 <GitCompare size={16} />
               </button>
               <button className="icon-btn" onClick={() => {
@@ -1270,7 +1271,7 @@ export default function Home() {
                   return prev;
                 });
                 setActiveFilePath('run-viewer://index');
-              }} title="Historical Runs">
+              }} title="Historical Runs" aria-label="Historical Runs">
                 <ListChecks size={16} />
               </button>
               <button className="icon-btn" onClick={() => {
@@ -1281,10 +1282,10 @@ export default function Home() {
                   return prev;
                 });
                 setActiveFilePath('system-check://main');
-              }} title="System Check (Preflight)">
+              }} title="System Check (Preflight)" aria-label="System Check">
                 <ShieldCheck size={16} />
               </button>
-              <button className={`icon-btn ${showAuditLog ? 'icon-btn--active' : ''}`} onClick={() => setShowAuditLog(!showAuditLog)} title="Audit Log">
+              <button className={`icon-btn ${showAuditLog ? 'icon-btn--active' : ''}`} onClick={() => setShowAuditLog(!showAuditLog)} title="Audit Log" aria-label="Audit Log" aria-pressed={showAuditLog}>
                 <Shield size={16} />
               </button>
             </>
@@ -1297,7 +1298,7 @@ export default function Home() {
               return prev;
             });
             setActiveFilePath('agent://workspace');
-          }} title="Open Agent Tab (Ctrl+J)">
+          }} title="Open Agent Tab (Ctrl+J)" aria-label="Open Agent Tab">
             <MessageSquare size={16} />
           </button>
           <button className={`icon-btn ${showBrowserPanel ? 'icon-btn--active' : ''}`} onClick={() => {
@@ -1314,10 +1315,10 @@ export default function Home() {
               return prev;
             });
             setActiveFilePath('browser://live');
-          }} title="Agent Browser">
+          }} title="Agent Browser" aria-label="Agent Browser" aria-pressed={showBrowserPanel}>
             <Globe size={16} style={showBrowserPanel ? { color: '#4EC3E0' } : {}} />
           </button>
-          <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
+          <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings" aria-label="Settings">
             <Settings size={16} />
           </button>
         </div>

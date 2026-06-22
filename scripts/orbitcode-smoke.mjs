@@ -247,6 +247,8 @@ async function runGuiSmoke(project) {
       return iframe?.getAttribute('src')?.includes('filePath=index.html');
     }, null, { timeout: 15000 });
     await page.locator('.preview-content[data-loading="false"]').waitFor({ timeout: 15000 });
+    const unnamedIconButtons = await page.locator('header.ide-toolbar button.icon-btn:not([aria-label]), .preview-header button.icon-btn:not([aria-label])').count();
+    if (unnamedIconButtons) fail(`Core icon buttons missing accessible names: ${unnamedIconButtons}`);
     if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(body)) {
       fail('GUI contains runtime error text');
     }

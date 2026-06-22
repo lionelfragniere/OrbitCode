@@ -84,13 +84,13 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
           {displayFile}
         </div>
         <div className="preview-header__actions">
-          <button className="icon-btn" onClick={handleRefresh} title="Refresh">
+          <button className="icon-btn" onClick={handleRefresh} title="Refresh" aria-label="Refresh preview">
             <RefreshCw size={12} />
           </button>
-          <button className="icon-btn" onClick={handleOpenExternal} title="Open in browser">
+          <button className="icon-btn" onClick={handleOpenExternal} title="Open in browser" aria-label="Open preview in browser">
             <ExternalLink size={12} />
           </button>
-          <button className="icon-btn" onClick={onClose} title="Close preview">
+          <button className="icon-btn" onClick={onClose} title="Close preview" aria-label="Close preview">
             <X size={14} />
           </button>
         </div>
