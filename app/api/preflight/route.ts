@@ -149,7 +149,14 @@ async function checkPlaywright(projectFolder?: string): Promise<PreflightCheck> 
 async function checkEnv(): Promise<PreflightCheck> {
   const missing: string[] = [];
   const needGcp = !process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_CLOUD_PROJECT;
-  if (needGcp) missing.push('GOOGLE_CLOUD_PROJECT');
+  if (needGcp) {
+    const gcloudProject = await run('gcloud config get-value project', 6000);
+    const project = gcloudProject.out.trim();
+    if (gcloudProject.ok && project && project !== '(unset)') {
+      return { id: 'env', label: 'Environment variables', level: 'pass', detail: `Using gcloud project ${project}` };
+    }
+    missing.push('GOOGLE_CLOUD_PROJECT');
+  }
 
   if (missing.length === 0) {
     return { id: 'env', label: 'Environment variables', level: 'pass', detail: 'Core env vars present' };
