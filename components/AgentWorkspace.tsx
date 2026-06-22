@@ -179,7 +179,34 @@ const TOOL_DISPLAY: Record<string, { icon: React.ReactNode; label: string; color
 //  Cards — Memoized
 // ════════════════════════════════════════════
 
-const PlanCard = memo(function PlanCard({ payload, onApprove, onEdit, taskStatus }: { payload: any, onApprove: () => void, onEdit: () => void, taskStatus: 'paused' | 'executing' | 'complete' | 'error' }) {
+type PlanPayload = {
+  summary?: string;
+  goal?: string;
+  stages?: string[];
+  task_breakdown?: string[];
+};
+
+type DecisionPayload = {
+  title?: string;
+  description?: string;
+  options?: unknown[];
+};
+
+type ResultLink = { url: string; label: string };
+
+type ResultPayload = {
+  verdict?: string;
+  summary?: string;
+  url?: string;
+  links?: ResultLink[];
+};
+
+type TimelineCard =
+  | { kind: 'plan_card'; payload: PlanPayload; ts: number }
+  | { kind: 'decision_card'; payload: DecisionPayload; ts: number }
+  | { kind: 'result_card'; payload: ResultPayload; ts: number };
+
+const PlanCard = memo(function PlanCard({ payload, onApprove, onEdit, taskStatus }: { payload: PlanPayload, onApprove: () => void, onEdit: () => void, taskStatus: 'paused' | 'executing' | 'complete' | 'error' }) {
   if (!payload) return null;
 
   // The orchestrator sends { summary: string, stages: string[] }
@@ -280,7 +307,7 @@ function isPlaceholderDecisionOption(option: DecisionOption): boolean {
   return /^(option \d+|option [a-z]|choice \d+)$/i.test(option.label.trim());
 }
 
-const DecisionCard = memo(function DecisionCard({ payload, onSelect }: { payload: any, onSelect: (option: string) => void }) {
+const DecisionCard = memo(function DecisionCard({ payload, onSelect }: { payload: DecisionPayload, onSelect: (option: string) => void }) {
   if (!payload) return null;
   const title = String(payload.title || 'OrbitCode needs your choice');
   const description = String(payload.description || 'Choose how you want OrbitCode to continue.');
@@ -328,7 +355,7 @@ const DecisionCard = memo(function DecisionCard({ payload, onSelect }: { payload
   );
 });
 
-const ResultCard = memo(function ResultCard({ payload, task }: { payload: any, task?: AgentTask | null }) {
+const ResultCard = memo(function ResultCard({ payload, task }: { payload: ResultPayload, task?: AgentTask | null }) {
   if (!payload) return null;
   const isFail = payload.verdict?.toLowerCase().includes('fail') || payload.verdict?.toLowerCase().includes('error');
   
@@ -336,7 +363,7 @@ const ResultCard = memo(function ResultCard({ payload, task }: { payload: any, t
   const allText = [
     payload.summary || '',
     payload.url || '',
-    ...(payload.links || []).map((l: any) => l.url || ''),
+    ...(payload.links || []).map((l) => l.url || ''),
     // Also look through task steps for deployment URLs
     ...(task?.steps || [])
       .filter(s => s.toolName === 'gcp_action' || s.toolName === 'run_command')
@@ -346,9 +373,9 @@ const ResultCard = memo(function ResultCard({ payload, task }: { payload: any, t
   const extractedUrls = extractUrls(allText);
   const explicitLinks = payload.links || [];
   // Combine explicit links with extracted, dedupe by URL
-  const allLinks = [...explicitLinks];
+  const allLinks: ResultLink[] = [...explicitLinks];
   for (const eu of extractedUrls) {
-    if (!allLinks.find((l: any) => l.url === eu.url)) {
+    if (!allLinks.find((l) => l.url === eu.url)) {
       allLinks.push(eu);
     }
   }
@@ -373,7 +400,7 @@ const ResultCard = memo(function ResultCard({ payload, task }: { payload: any, t
 
         {allLinks.length > 0 && (
           <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-            {allLinks.map((link: any, i: number) => (
+            {allLinks.map((link, i: number) => (
               <a key={i} href={link.url} target="_blank" rel="noreferrer" className="agent-btn primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Globe size={12} /> {link.label}
               </a>
@@ -609,12 +636,12 @@ export function AgentWorkspace({
   // Memoized timeline cards from task steps
   const timelineCards = useMemo(() => {
     if (!task?.steps) return [];
-    const cards: any[] = [];
+    const cards: TimelineCard[] = [];
     let lastPlanCardIdx = -1;
     task.steps.forEach(step => {
       if (step.type === 'approval_required') {
         try {
-          const detail = JSON.parse(step.content);
+          const detail = JSON.parse(step.content) as { type?: string; payload?: unknown };
           if (detail.type === 'plan') {
             // Only keep the last plan card (avoid duplicates from stage_complete + run_paused)
             if (lastPlanCardIdx >= 0) {
@@ -623,13 +650,13 @@ export function AgentWorkspace({
             } else {
               lastPlanCardIdx = cards.length;
             }
-            cards.push({ kind: 'plan_card', payload: detail.payload, ts: step.timestamp });
+            cards.push({ kind: 'plan_card', payload: (detail.payload || {}) as PlanPayload, ts: step.timestamp });
           } else if (detail.type === 'decision') {
-            cards.push({ kind: 'decision_card', payload: detail.payload, ts: step.timestamp });
+            cards.push({ kind: 'decision_card', payload: (detail.payload || {}) as DecisionPayload, ts: step.timestamp });
           }
         } catch { /* ignore */ }
       } else if (step.type === 'tool_call' && step.toolName === 'task_complete' && step.toolArgs) {
-        cards.push({ kind: 'result_card', payload: step.toolArgs, ts: step.timestamp });
+        cards.push({ kind: 'result_card', payload: step.toolArgs as ResultPayload, ts: step.timestamp });
       }
     });
     return cards;

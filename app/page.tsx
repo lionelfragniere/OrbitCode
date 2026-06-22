@@ -51,6 +51,26 @@ interface Toast {
 
 type AppView = 'loading' | 'dashboard' | 'ide';
 
+const TEXT_EXTENSIONS = new Set([
+  '.html', '.htm', '.css', '.js', '.jsx', '.ts', '.tsx', '.json',
+  '.py', '.rb', '.java', '.go', '.rs', '.c', '.cpp', '.h', '.hpp',
+  '.md', '.txt', '.yml', '.yaml', '.toml', '.xml', '.csv', '.sql',
+  '.sh', '.bat', '.ps1', '.env', '.gitignore', '.dockerfile',
+  '.vue', '.svelte', '.php', '.swift', '.kt', '.scala', '.r',
+  '.cfg', '.ini', '.conf', '.properties', '.makefile',
+]);
+
+const EXTENSIONLESS_TEXT_FILES = new Set([
+  'readme', 'license', 'makefile', 'dockerfile', 'procfile', 'gemfile', '.gitignore',
+]);
+
+function isTextFile(filename: string): boolean {
+  const dot = filename.lastIndexOf('.');
+  const ext = dot >= 0 ? filename.slice(dot).toLowerCase() : '';
+  if (TEXT_EXTENSIONS.has(ext)) return true;
+  return EXTENSIONLESS_TEXT_FILES.has(filename.toLowerCase());
+}
+
 export default function Home() {
   // ── App view state ──
   const [view, setView] = useState<AppView>('loading');
@@ -300,16 +320,10 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [messages, projectPath, view]);
 
-  // Load file tree when entering IDE
-  useEffect(() => {
-    if (view === 'ide' && projectPath) loadFileTree();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, projectPath]);
-
   // ──────────────────────────────────────────
   //  File tree
   // ──────────────────────────────────────────
-  const loadFileTree = async () => {
+  const loadFileTree = useCallback(async () => {
     if (!projectPath) return;
     try {
       const res = await fetch(`/api/files?projectFolder=${encodeURIComponent(projectPath)}`);
@@ -319,7 +333,12 @@ export default function Home() {
       console.error('Failed to load file tree:', err);
       showToast('Failed to load file tree', 'error');
     }
-  };
+  }, [projectPath, showToast]);
+
+  // Load file tree when entering IDE
+  useEffect(() => {
+    if (view === 'ide' && projectPath) loadFileTree();
+  }, [view, projectPath, loadFileTree]);
 
   // Open a file
   const openFile = async (node: FileNode) => {
@@ -485,28 +504,11 @@ export default function Home() {
         setTimeout(() => setPreviewOpen(true), 500);
       }
     }
-  }, [projectPath, showToast]);
+  }, [projectPath, showToast, loadFileTree]);
 
   // ──────────────────────────────────────────
   //  AI Chat — Full Project Context (Antigravity-style)
   // ──────────────────────────────────────────
-  const TEXT_EXTENSIONS = new Set([
-    '.html', '.htm', '.css', '.js', '.jsx', '.ts', '.tsx', '.json',
-    '.py', '.rb', '.java', '.go', '.rs', '.c', '.cpp', '.h', '.hpp',
-    '.md', '.txt', '.yml', '.yaml', '.toml', '.xml', '.csv', '.sql',
-    '.sh', '.bat', '.ps1', '.env', '.gitignore', '.dockerfile',
-    '.vue', '.svelte', '.php', '.swift', '.kt', '.scala', '.r',
-    '.cfg', '.ini', '.conf', '.properties', '.makefile',
-  ]);
-
-  const isTextFile = (filename: string): boolean => {
-    const ext = filename.substring(filename.lastIndexOf('.')).toLowerCase();
-    if (TEXT_EXTENSIONS.has(ext)) return true;
-    // Files without extensions that are commonly text
-    const basename = filename.toLowerCase();
-    return ['readme', 'license', 'makefile', 'dockerfile', 'procfile', 'gemfile', '.gitignore'].includes(basename);
-  };
-
   const buildFullProjectContext = useCallback(async (): Promise<string> => {
     if (!projectPath) return '';
 
@@ -813,7 +815,7 @@ export default function Home() {
     _runAgentPipeline(resumeIntent, agentTask, resumeSnapshot);
   };
 
-  const _runAgentPipeline = async (text: string, currentTask: AgentTask, resumeState?: any) => {
+  const _runAgentPipeline = async (text: string, currentTask: AgentTask, resumeState?: Record<string, unknown>) => {
     if (!config) return;
 
     // Capture session ID at start — if it changes mid-run, we abort
@@ -1033,7 +1035,7 @@ export default function Home() {
   };
 
   // Dispatch to correct handler based on mode
-  const handleSend = useCallback((text: string) => {
+  const handleSend = (text: string) => {
     // ── APPROVAL SAFETY: Text input NEVER auto-resumes a paused plan ──
     // Only the explicit "Approve & Continue" button (via onResumeTask) can resume.
     // If the user types while paused, treat it as a revision / new request:
@@ -1051,7 +1053,7 @@ export default function Home() {
     } else {
       sendMessage(text);
     }
-  }, [chatMode, sendMessage, agentTask]);
+  };
 
   const applyCode = (code: string) => {
     if (!activeFilePath) return;
@@ -1103,7 +1105,7 @@ export default function Home() {
         setShowBrowserPanel(true);
       }
     }
-  }, [agentTask?.steps]);
+  }, [agentTask?.steps, agentTask?.status]);
 
   // ──────────────────────────────────────────
   //  RENDER

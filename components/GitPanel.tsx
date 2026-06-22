@@ -96,7 +96,7 @@ export default function GitPanel({ projectFolder, onToast }: GitPanelProps) {
       } catch { /* silent */ }
     }, 2000);
     return () => clearTimeout(timer);
-  }, [projectFolder]); // Only on project open
+  }, [projectFolder, status?.remote, fetchStatus]); // Only on project open or remote change
 
   // Build a "blocked by dirty tree" evaluation for would_overwrite failures
   const buildDirtyTreeEvaluation = (): ActionEvaluation => {
