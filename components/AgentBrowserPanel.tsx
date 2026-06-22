@@ -29,6 +29,15 @@ interface HistoricalRunData {
   videoUrl?: string;
 }
 
+type LiveBrowserSessionState = BrowserSessionState & {
+  lastScreenshot?: string | null;
+  screenshotCount?: number;
+};
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(values.filter((value): value is string => !!value)));
+}
+
 function getActionIcon(action: string) {
   switch (action) {
     case 'navigate': return <Navigation size={12} style={{ color: '#4EC3E0' }} />;
@@ -58,6 +67,7 @@ export default function AgentBrowserPanel({
   const logsRef = useRef<HTMLDivElement>(null);
 
   const isLive = !runId || (liveSessionState && liveSessionState.sessionId === runId);
+  const liveSession = liveSessionState as LiveBrowserSessionState | null;
 
   // Fetch history if not live
   useEffect(() => {
@@ -79,17 +89,23 @@ export default function AgentBrowserPanel({
   }, [runId, isLive, projectFolder]);
 
   // Derived state depending on Live vs Historical
-  const status = isLive ? (liveSessionState?.status || 'idle') : (historyData?.manifest?.status || 'complete');
+  const status = isLive ? (liveSession?.status || 'idle') : (historyData?.manifest?.status || 'complete');
   const currentUrl = isLive 
-    ? (liveSessionState?.currentUrl || liveBrowserSteps[liveBrowserSteps.length - 1]?.url || 'about:blank')
+    ? (liveSession?.currentUrl || liveBrowserSteps[liveBrowserSteps.length - 1]?.url || 'about:blank')
     : (historyData?.manifest?.currentUrl || 'about:blank');
   
-  const browserSteps = isLive ? liveBrowserSteps : (historyData?.manifest?.steps || []);
-  const allScreenshots = isLive 
-    ? Array.from(new Set([...browserSteps.map(s => s.screenshot).filter(Boolean), ...(liveSessionState?.screenshots || [])]))
+  const browserSteps = isLive
+    ? (liveBrowserSteps.length > 0 ? liveBrowserSteps : liveSession?.steps || [])
+    : (historyData?.manifest?.steps || []);
+  const allScreenshots = isLive
+    ? uniqueStrings([
+        ...browserSteps.map(s => s.screenshot),
+        ...(liveSession?.screenshots || []),
+        liveSession?.lastScreenshot,
+      ])
     : (historyData?.screenshots || []);
 
-  const logs = isLive ? (liveSessionState?.logs || []) : (historyData?.rawLogs?.split('\n') || []);
+  const logs = isLive ? (liveSession?.logs || []) : (historyData?.rawLogs?.split('\n') || []);
 
   // Auto-scroll logic
   useEffect(() => { if (stepsRef.current) stepsRef.current.scrollTop = stepsRef.current.scrollHeight; }, [browserSteps.length]);
@@ -119,7 +135,7 @@ export default function AgentBrowserPanel({
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {activeSideTab === 'timeline' && (
             <div ref={stepsRef} style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
-               {isLive && browserSteps.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text-disabled)', textAlign: 'center', padding: '24px' }}>Waiting for browser...</div>}
+               {isLive && browserSteps.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text-disabled)', textAlign: 'center', padding: '24px' }}>{status === 'idle' ? 'Waiting for browser...' : `No browser steps available for this ${status} session.`}</div>}
                {!isLive && browserSteps.length === 0 && <div style={{ fontSize: '11px', color: 'var(--text-disabled)', textAlign: 'center', padding: '24px' }}>Detailed step timeline is not available for this run.</div>}
                {browserSteps.map((step, idx) => (
                   <div key={idx} style={{
@@ -164,7 +180,7 @@ export default function AgentBrowserPanel({
            </div>
            <div style={{ flex: 1 }}>
               <div style={{ fontSize: '14px', fontWeight: 700 }}>
-                {isLive ? 'Live Validation Session' : `Historical Run: ${runId}`}
+                {isLive ? (status === 'running' || status === 'paused' ? 'Live Validation Session' : 'Browser Validation Session') : `Historical Run: ${runId}`}
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Navigation size={10}/> {currentUrl}

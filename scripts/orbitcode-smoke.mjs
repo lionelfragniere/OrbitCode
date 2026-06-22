@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs/promises';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -9,6 +10,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const base = process.env.ORBITCODE_BASE || 'http://localhost:3000';
 const outputPath = process.env.ORBITCODE_SMOKE_OUT || path.join(repoRoot, '.orbitcode', 'qa', 'orbitcode-smoke.json');
 const runGui = process.env.ORBITCODE_SMOKE_GUI !== '0';
+const runAgentBrowser = process.env.ORBITCODE_SMOKE_AGENT_BROWSER !== '0';
 const runProvider = process.env.ORBITCODE_SMOKE_PROVIDER === '1';
 const runAgent = process.env.ORBITCODE_SMOKE_AGENT === '1';
 const providerBaseUrl = process.env.ORBITCODE_SMOKE_PROVIDER_BASE || 'http://localhost:11434/v1';
@@ -75,6 +77,86 @@ async function request(pathname, options = {}, params = {}) {
     // Plain-text endpoints are fine.
   }
   return { res, text, json };
+}
+
+function parseSseEvents(text) {
+  return text.split(/\r?\n/)
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => JSON.parse(line.slice(6)));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
+
+async function startStubProvider(projectFolder) {
+  const previewUrl = String(url('/api/preview', { projectFolder, filePath: 'index.html' }));
+  const browserScript = `
+    await page.goto(${JSON.stringify(previewUrl)}, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body');
+    const text = await page.innerText('body');
+    if (!text.includes('Crop identification for Monthey')) {
+      throw new Error('Monthey preview marker missing');
+    }
+    logs.push('agent-browser-smoke-ok');
+  `;
+  let callCount = 0;
+
+  const server = http.createServer(async (req, res) => {
+    if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
+      res.writeHead(404, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'not found' }));
+      return;
+    }
+
+    const body = JSON.parse(await readBody(req) || '{}');
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const sawToolResult = messages.some((message) => message.role === 'tool');
+    callCount += 1;
+    const toolName = sawToolResult ? 'task_complete' : 'run_browser_test';
+    const args = sawToolResult
+      ? { summary: 'Agent browser smoke complete' }
+      : { script: browserScript };
+
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({
+      id: `chatcmpl-smoke-${callCount}`,
+      object: 'chat.completion',
+      created: Math.floor(Date.now() / 1000),
+      model: 'stub-browser-smoke',
+      choices: [{
+        index: 0,
+        finish_reason: 'tool_calls',
+        message: {
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: `call_smoke_${callCount}`,
+            type: 'function',
+            function: {
+              name: toolName,
+              arguments: JSON.stringify(args),
+            },
+          }],
+        },
+      }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    }));
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') fail('Stub provider did not bind to a local port');
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    get callCount() { return callCount; },
+    close: () => new Promise((resolve) => server.close(resolve)),
+  };
 }
 
 function attr(value) {
@@ -194,6 +276,54 @@ async function main() {
     if (!json?.success) fail('Stop did not return success');
   });
 
+  if (runAgentBrowser) {
+    await check('agent browser tool drives observable preview', async () => {
+      const provider = await startStubProvider(projectFolder);
+      try {
+        const { res, text } = await request('/api/agent', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            message: 'Use run_browser_test once to verify the Monthey preview, then finish.',
+            projectFolder,
+            projectContext: 'Deterministic OrbitCode smoke test. Do not write files or run shell commands.',
+            providerKind: 'ollama',
+            baseUrl: provider.baseUrl,
+            model: 'stub-browser-smoke',
+            maxAgentTurns: 3,
+            orchestrated: false,
+          }),
+        });
+        if (!res.ok) fail(`HTTP ${res.status}: ${text.slice(0, 500)}`);
+        const events = parseSseEvents(text);
+        const textDump = events.map((event) => `${event.type}:${event.toolName || ''}:${event.content || ''}`).join('\n');
+        if (!events.some((event) => event.type === 'tool_call' && event.toolName === 'run_browser_test')) {
+          fail('SSE missing run_browser_test tool call');
+        }
+        if (!events.some((event) => event.toolName === 'browser_step')) {
+          fail('SSE missing browser_step progress');
+        }
+        if (!/Browser session completed successfully/.test(textDump)) {
+          fail('Browser runner did not report success');
+        }
+        if (!events.some((event) => event.type === 'complete' && String(event.content || '').includes('Agent browser smoke complete'))) {
+          fail('Agent did not complete after browser tool');
+        }
+        if (/ERROR during browser execution|BUILD VERIFICATION FAILED/.test(textDump)) {
+          fail('Agent browser smoke reported an error');
+        }
+
+        const session = await request('/api/browser-session', {}, { projectFolder });
+        if (!session.json?.session?.stepCount || session.json.session.stepCount < 2) {
+          fail('Browser session API did not expose captured steps');
+        }
+        return `events=${events.length}, steps=${session.json.session.stepCount}, providerCalls=${provider.callCount}`;
+      } finally {
+        await provider.close();
+      }
+    });
+  }
+
   await check('Monthey project logic smoke passes', async () => {
     const result = spawnSync(process.execPath, ['tests/logic-smoke.mjs'], { cwd: project, encoding: 'utf8' });
     if (result.status !== 0) fail((result.stderr || result.stdout || 'logic smoke failed').trim());
@@ -233,9 +363,7 @@ async function main() {
         }),
       });
       if (!res.ok) fail(`HTTP ${res.status}: ${text.slice(0, 500)}`);
-      const events = text.split(/\r?\n/)
-        .filter((line) => line.startsWith('data: '))
-        .map((line) => JSON.parse(line.slice(6)));
+      const events = parseSseEvents(text);
       const types = events.map((event) => event.type);
       const tools = events.map((event) => event.toolName).filter(Boolean);
       if (!types.includes('tool_call') || !tools.includes('list_files') || !text.includes('Agent smoke listed files')) {

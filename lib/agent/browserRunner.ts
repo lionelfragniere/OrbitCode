@@ -6,7 +6,7 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { ExecutorContext } from './executor';
+import type { ExecutorContext } from './executor';
 import type { BrowserStep, BrowserSessionState } from '../types';
 
 // ════════════════════════════════════════════
@@ -26,7 +26,12 @@ export function controlBrowserSession(action: 'pause' | 'resume' | 'stop', proje
   if (!session) return false;
   if (action === 'pause') { session.status = 'paused'; return true; }
   if (action === 'resume') { session.status = 'running'; return true; }
-  if (action === 'stop') { session.status = 'failed'; return true; }
+  if (action === 'stop') {
+    if (session.status === 'running' || session.status === 'paused' || session.status === 'idle') {
+      session.status = 'failed';
+    }
+    return true;
+  }
   return false;
 }
 

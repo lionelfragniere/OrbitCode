@@ -198,7 +198,8 @@ export default function Home() {
     if (!showBrowserPanel) return;
     const poll = async () => {
       try {
-        const res = await fetch('/api/browser-session');
+        const params = projectPath ? `?projectFolder=${encodeURIComponent(projectPath)}` : '';
+        const res = await fetch(`/api/browser-session${params}`);
         const data = await res.json();
         if (data.session) setBrowserSessionState(data.session);
       } catch { /* ignore */ }
@@ -206,7 +207,7 @@ export default function Home() {
     poll();
     const interval = setInterval(poll, 1500);
     return () => clearInterval(interval);
-  }, [showBrowserPanel]);
+  }, [showBrowserPanel, projectPath]);
 
   // ──────────────────────────────────────────
   //  Keyboard shortcuts
@@ -1262,25 +1263,23 @@ export default function Home() {
           }} title="Open Agent Tab (Ctrl+J)">
             <MessageSquare size={16} />
           </button>
-          {!config.beginnerMode && (
-            <button className={`icon-btn ${showBrowserPanel ? 'icon-btn--active' : ''}`} onClick={() => {
-              if (showBrowserPanel) {
-                setShowBrowserPanel(false);
-                if (activeFilePath === 'browser://live') setActiveFilePath('agent://workspace');
-                return;
+          <button className={`icon-btn ${showBrowserPanel ? 'icon-btn--active' : ''}`} onClick={() => {
+            if (showBrowserPanel) {
+              setShowBrowserPanel(false);
+              if (activeFilePath === 'browser://live') setActiveFilePath('agent://workspace');
+              return;
+            }
+            setShowBrowserPanel(true);
+            setOpenFiles((prev) => {
+              if (!prev.find(f => f.isBrowser && !f.runId)) {
+                return [...prev, { path: 'browser://live', name: 'Browser', content: '', language: 'browser', isDirty: false, isBrowser: true }];
               }
-              setShowBrowserPanel(true);
-              setOpenFiles((prev) => {
-                if (!prev.find(f => f.isBrowser && !f.runId)) {
-                  return [...prev, { path: 'browser://live', name: 'Browser', content: '', language: 'browser', isDirty: false, isBrowser: true }];
-                }
-                return prev;
-              });
-              setActiveFilePath('browser://live');
-            }} title="Agent Browser">
-              <Globe size={16} style={showBrowserPanel ? { color: '#4EC3E0' } : {}} />
-            </button>
-          )}
+              return prev;
+            });
+            setActiveFilePath('browser://live');
+          }} title="Agent Browser">
+            <Globe size={16} style={showBrowserPanel ? { color: '#4EC3E0' } : {}} />
+          </button>
           <button className="icon-btn" onClick={() => setShowSettings(true)} title="Settings">
             <Settings size={16} />
           </button>
