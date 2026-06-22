@@ -338,6 +338,10 @@ async function main() {
     const { res, json, text } = await request('/api/preflight', {}, { projectFolder });
     if (!res.ok) fail(`HTTP ${res.status}: ${text.slice(0, 500)}`);
     const checks = new Map((json?.checks || []).map((item) => [item.id, item]));
+    for (const item of json?.checks || []) {
+      const text = [item.detail, item.remediation, item.version].filter(Boolean).join('\n');
+      if (/\r/.test(text)) fail(`Preflight ${item.id} contains carriage-return text`);
+    }
     for (const id of ['node', 'git', 'workspace', 'runs']) {
       const item = checks.get(id);
       if (!item || item.level === 'fail') fail(`Preflight ${id} failed or missing`);

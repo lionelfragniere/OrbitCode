@@ -87,8 +87,8 @@ async function checkGcloudAuth(): Promise<PreflightCheck> {
       remediation: 'Install the Google Cloud SDK: https://cloud.google.com/sdk/docs/install',
     };
   }
-  const auth = await run('gcloud auth list --format="value(account)"', 10000);
-  const accounts = auth.out.split('\n').filter(Boolean);
+  const auth = await run('gcloud auth list --filter=status:ACTIVE --format="value(account)"', 10000);
+  const accounts = auth.out.split('\n').map((account) => account.trim()).filter(Boolean);
   if (accounts.length === 0) {
     return {
       id: 'gcloud',
