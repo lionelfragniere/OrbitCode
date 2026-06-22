@@ -1452,6 +1452,55 @@ html, body {
   background: var(--bg-hover);
 }
 
+.recent-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-project-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.recent-project-row__open {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.recent-project-row__open:focus-visible,
+.dashboard-project-card:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.recent-project-row__remove {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.dashboard-project-card {
+  width: 100%;
+  appearance: none;
+  background: var(--bg-secondary);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.dashboard-project-card:hover {
+  border-color: var(--border-accent) !important;
+  box-shadow: 0 0 0 1px var(--accent-glow);
+}
+
 .folder-browser__location-info {
   flex: 1;
   display: flex;

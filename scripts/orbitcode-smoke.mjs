@@ -178,6 +178,8 @@ async function runGuiSmoke(project) {
     await page.goto(base, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.body.innerText.includes('OrbitCode'), null, { timeout: 15000 });
     let body = await page.locator('body').innerText();
+    const nestedButtonLikes = await page.locator('button button, [role="button"] button').count();
+    if (nestedButtonLikes) fail(`GUI has nested button-like controls: ${nestedButtonLikes}`);
 
     if (!body.includes(projectName) || !body.includes('index.html')) {
       const opener = page.locator(`[title="Open ${attr(projectName)}"]`);

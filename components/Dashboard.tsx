@@ -51,7 +51,7 @@ export default function Dashboard({
   onOpenSettings,
 }: DashboardProps) {
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(config.workspacePath));
   const [showCreateNew, setShowCreateNew] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newGitRemote, setNewGitRemote] = useState('');
@@ -347,40 +347,33 @@ export default function Dashboard({
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                   <Clock size={11} style={{ verticalAlign: '-1px' }} /> Recent Projects
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div className="recent-projects">
                   {config.recentProjects.slice(0, 5).map((rp) => (
-                    <div
-                      key={rp.path}
-                      className="folder-browser__location"
-                      onClick={() => onOpenProject(rp.path, rp.name)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onOpenProject(rp.path, rp.name);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      title={`Open ${rp.name}`}
-                      style={{ borderRadius: '8px', padding: '10px 16px' }}
-                    >
-                      <Folder size={16} style={{ color: '#F8EA44', flexShrink: 0 }} />
-                      <div className="folder-browser__location-info">
-                        <span className="folder-browser__location-name">{rp.name}</span>
-                        <span className="folder-browser__location-path">{rp.path}</span>
-                      </div>
-                      <span style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>
-                        {timeAgo(rp.lastOpened)}
-                      </span>
+                    <div className="recent-project-row" key={rp.path}>
                       <button
-                        className="icon-btn"
-                        style={{ width: '20px', height: '20px' }}
-                        onClick={(e) => { e.stopPropagation(); removeRecent(rp.path); }}
-                        title="Remove from recent"
+                        type="button"
+                        className="folder-browser__location recent-project-row__open"
+                        onClick={() => onOpenProject(rp.path, rp.name)}
+                        title={`Open ${rp.name}`}
+                      >
+                        <Folder size={16} style={{ color: '#F8EA44', flexShrink: 0 }} />
+                        <span className="folder-browser__location-info">
+                          <span className="folder-browser__location-name">{rp.name}</span>
+                          <span className="folder-browser__location-path">{rp.path}</span>
+                        </span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>
+                          {timeAgo(rp.lastOpened)}
+                        </span>
+                        <ChevronRight size={14} style={{ opacity: 0.3, flexShrink: 0 }} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn recent-project-row__remove"
+                        onClick={() => removeRecent(rp.path)}
+                        title={`Remove ${rp.name} from recent projects`}
                       >
                         <Trash2 size={10} />
                       </button>
-                      <ChevronRight size={14} style={{ opacity: 0.3, flexShrink: 0 }} />
                     </div>
                   ))}
                 </div>
@@ -400,6 +393,7 @@ export default function Dashboard({
                     <span className="streaming-indicator__dot" />
                     <span className="streaming-indicator__dot" />
                   </div>
+                  <span className="empty-state__text">Loading projects...</span>
                 </div>
               ) : filteredProjects.length === 0 ? (
                 <div className="empty-state" style={{ padding: '40px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
@@ -415,18 +409,11 @@ export default function Dashboard({
                   gap: '12px',
                 }}>
                   {filteredProjects.map((project) => (
-                    <div
+                    <button
                       key={project.path}
-                      className="setup-card"
+                      type="button"
+                      className="setup-card dashboard-project-card"
                       onClick={() => onOpenProject(project.path, project.name)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onOpenProject(project.path, project.name);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
                       title={`Open ${project.name}`}
                       style={{
                         margin: 0,
@@ -435,14 +422,6 @@ export default function Dashboard({
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         border: '1px solid var(--border-subtle)',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-accent)';
-                        e.currentTarget.style.boxShadow = '0 0 0 1px var(--accent-glow)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -484,7 +463,7 @@ export default function Dashboard({
                           {project.remote.replace('https://github.com/', '').replace('.git', '')}
                         </div>
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
