@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { Globe, X, RefreshCw, ExternalLink } from 'lucide-react';
+import { Globe, X, RefreshCw, ExternalLink, Loader2 } from 'lucide-react';
 
 interface PreviewPanelProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface PreviewPanelProps {
 export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFile }: PreviewPanelProps) {
   const [key, setKey] = useState(0); // Force iframe reload
   const [locationState, setLocationState] = useState<{ sourceFile: string; href: string; filePath: string } | null>(null);
+  const [loadedKey, setLoadedKey] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const isImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(previewFile);
@@ -22,6 +23,15 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
   const activeLocation = locationState?.sourceFile === previewFile ? locationState : null;
   const displayFile = activeLocation?.filePath || previewFile;
   const currentUrl = activeLocation?.href || url;
+  const loadKey = url ? `${url}:${key}` : '';
+  const loading = !!url && loadedKey !== loadKey;
+
+  useEffect(() => {
+    if (!loadKey || loadedKey === loadKey) return;
+    // ponytail: local iframe load events can be swallowed; add error UI if preview requests stop being local.
+    const timer = window.setTimeout(() => setLoadedKey(loadKey), 1500);
+    return () => window.clearTimeout(timer);
+  }, [loadKey, loadedKey]);
 
   const applyLocation = useCallback((href: string) => {
     try {
@@ -37,11 +47,12 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
       if (event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data as { type?: string; href?: string } | null;
       if (data?.type !== 'orbitcode:preview-location' || typeof data.href !== 'string') return;
+      setLoadedKey(loadKey);
       applyLocation(data.href);
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [applyLocation]);
+  }, [applyLocation, loadKey]);
 
   const handleRefresh = () => {
     setKey((k) => k + 1);
@@ -52,6 +63,7 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
   };
 
   const handleFrameLoad = () => {
+    setLoadedKey(loadKey);
     try {
       const href = iframeRef.current?.contentWindow?.location.href;
       if (href) applyLocation(href);
@@ -85,7 +97,11 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
       </div>
 
       {/* Viewport */}
-      <div className="preview-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isImage ? 'var(--bg-tertiary)' : undefined, overflow: 'auto' }}>
+      <div
+        className="preview-content"
+        data-loading={loading ? 'true' : 'false'}
+        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isImage ? 'var(--bg-tertiary)' : undefined, overflow: 'auto' }}
+      >
         {url ? (
           isImage ? (
             <img 
@@ -93,6 +109,8 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
               src={url} 
               alt={previewFile}
               title={previewFile}
+              onLoad={() => setLoadedKey(loadKey)}
+              onError={() => setLoadedKey(loadKey)}
               style={{
                 maxWidth: '100%',
                 maxHeight: '100%',
@@ -119,6 +137,12 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
           <div className="empty-state">
             <Globe size={28} className="empty-state__icon" />
             <span className="empty-state__text">No file to preview</span>
+          </div>
+        )}
+        {loading && (
+          <div className="preview-loading" role="status" aria-live="polite">
+            <Loader2 size={16} className="spin" />
+            <span>Loading preview...</span>
           </div>
         )}
       </div>

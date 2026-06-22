@@ -246,6 +246,7 @@ async function runGuiSmoke(project) {
       const iframe = document.querySelector('iframe[title="Preview"]');
       return iframe?.getAttribute('src')?.includes('filePath=index.html');
     }, null, { timeout: 15000 });
+    await page.locator('.preview-content[data-loading="false"]').waitFor({ timeout: 15000 });
     if (/Unhandled Runtime Error|Application error|Module not found|404|500/.test(body)) {
       fail('GUI contains runtime error text');
     }
@@ -257,6 +258,7 @@ async function runGuiSmoke(project) {
       const iframe = document.querySelector('iframe[title="Preview"]');
       return iframe?.getAttribute('src')?.includes('filePath=index.html');
     }, null, { timeout: 15000 });
+    await page.locator('.preview-content[data-loading="false"]').waitFor({ timeout: 15000 });
 
     await page.screenshot({ path: screenshotPath, fullPage: false });
     if (consoleErrors.length) fail(`Console/page errors: ${consoleErrors.slice(0, 3).join(' | ')}`);
