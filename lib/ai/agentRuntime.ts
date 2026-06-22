@@ -152,7 +152,7 @@ export async function* executeAgentWithProvider(
           completionError = 'Completion rejected: this stage must make or verify concrete changes before task_complete.';
         }
 
-        if (!completionError) {
+        if (!completionError && (!stageName || stageName === 'implement' || stageName === 'build')) {
           try {
             const projectFolder = (globalThis as Record<string, unknown>).__og_current_project_folder as string | undefined;
             if (projectFolder) {

@@ -12,9 +12,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { executeAgentWithTools, buildAgentSystemInstruction, type AgentTurn } from '@/lib/agent/vertex';
-import { runOrchestrator, type OrchestratorEvent } from '@/lib/agent/orchestrator';
+import { executeAgentWithTools, buildAgentSystemInstruction } from '@/lib/agent/vertex';
+import { runOrchestrator } from '@/lib/agent/orchestrator';
 import { executeTool, type ExecutorContext } from '@/lib/agent/executor';
+import { isPonytailReportCommand } from '@/lib/agent/ponytail';
 import fs from 'fs/promises';
 import path from 'path';
 import { getProjectRunsDir } from '@/lib/server/appPaths';
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
   } = body;
 
   const effectiveProjectContext = `${projectContext || ''}${beginnerMode ? '\n\n## Beginner Mode\nThe user prefers simple explanations. Keep code-heavy details out of summaries unless necessary, name what changed in plain language, and give one clear next step. When asking the user to choose, put the real choice in each button label. Never show placeholders like "Option 1" or "Option 2".' : ''}`;
+  const ponytailReportOnly = isPonytailReportCommand(String(message || ''));
 
   if (!message || !projectFolder) {
     return new Response(
@@ -145,7 +147,7 @@ export async function POST(request: NextRequest) {
           maxTokens: maxTokens ?? 65536,
         };
 
-        if (orchestrated) {
+        if (orchestrated && !ponytailReportOnly) {
           // ═══ ORCHESTRATED MODE ═══
           // Uses the multi-stage pipeline with selective agent roles
           const pipeline = runOrchestrator(
@@ -236,7 +238,9 @@ export async function POST(request: NextRequest) {
 
           // ═══ POST-BUILD VERIFICATION GATE ═══
           // Even in single-agent mode, we now verify the build actually works
-          if (agentCompletedSuccessfully) {
+          if (agentCompletedSuccessfully && ponytailReportOnly) {
+            send({ type: 'complete', content: agentSummary, step: ++stepCount });
+          } else if (agentCompletedSuccessfully) {
             try {
               const { runPostBuildVerify } = await import('@/lib/agent/postBuildVerify');
               send({ type: 'text', content: '\n🔍 Running post-build verification...', step: ++stepCount });
@@ -363,7 +367,6 @@ export async function PATCH(request: NextRequest) {
     baseUrl,
     headers,
     model,
-    maxAgentTurns,
     projectContext,
     beginnerMode,
     message, // original message for context

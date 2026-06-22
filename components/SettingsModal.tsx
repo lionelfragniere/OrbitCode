@@ -12,13 +12,18 @@ interface SettingsModalProps {
   onBrowseFolder: () => void;
 }
 
+interface LocalModelStatus {
+  ollamaInstalled: boolean;
+  ollamaModels: string[];
+}
+
 export default function SettingsModal({ settings, onSave, onClose, onBrowseFolder }: SettingsModalProps) {
   const [draft, setDraft] = useState<AppSettings>({ ...settings });
   const [activeTab, setActiveTab] = useState<'general' | 'model' | 'prompt'>('general');
   const [providers, setProviders] = useState<Array<{ id: string; name: string; kind: string; defaultModel: string; enabled: boolean; hasApiKey?: boolean; baseUrl?: string }>>([]);
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [baseUrlDraft, setBaseUrlDraft] = useState('');
-  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null);
+  const [localStatus, setLocalStatus] = useState<LocalModelStatus | null>(null);
 
   useEffect(() => {
     fetch('/api/providers')
@@ -32,10 +37,15 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
     fetch('/api/local-llm/status')
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setOllamaInstalled(Boolean(data.ollamaInstalled));
+        if (!cancelled) {
+          setLocalStatus({
+            ollamaInstalled: Boolean(data.ollamaInstalled ?? data.ollama?.installed),
+            ollamaModels: data.ollamaModels || data.ollama?.modelNames || [],
+          });
+        }
       })
       .catch(() => {
-        if (!cancelled) setOllamaInstalled(null);
+        if (!cancelled) setLocalStatus(null);
       });
     return () => {
       cancelled = true;
@@ -47,6 +57,12 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
   };
 
   const selectedProvider = providers.find((provider) => provider.id === (draft.selectedProviderId || draft.providerId));
+  const localModelInstalled = Boolean(localStatus?.ollamaModels.some((model) => {
+    const current = draft.selectedModel.toLowerCase();
+    const installed = model.toLowerCase();
+    return installed === current || (!current.includes(':') && installed.startsWith(`${current}:`));
+  }));
+  const installedModels = localStatus?.ollamaModels.length ? localStatus.ollamaModels.join(', ') : 'none';
 
   const saveAll = async () => {
     if (selectedProvider && (apiKeyDraft.trim() || baseUrlDraft.trim())) {
@@ -251,7 +267,7 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
                 </div>
               </div>
 
-              {selectedProvider?.kind === 'ollama' && ollamaInstalled === false && (
+              {selectedProvider?.kind === 'ollama' && localStatus?.ollamaInstalled === false && (
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -290,6 +306,22 @@ export default function SettingsModal({ settings, onSave, onClose, onBrowseFolde
                       Use an API instead
                     </button>
                   </div>
+                </div>
+              )}
+
+              {selectedProvider?.kind === 'ollama' && localStatus?.ollamaInstalled && (
+                <div style={{
+                  padding: '10px 12px',
+                  marginBottom: '12px',
+                  background: localModelInstalled ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 203, 56, 0.08)',
+                  border: localModelInstalled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(255, 203, 56, 0.22)',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  color: localModelInstalled ? 'var(--color-success)' : '#FFCB38',
+                }}>
+                  {localModelInstalled
+                    ? `Local model installed: ${draft.selectedModel}. Available: ${installedModels}`
+                    : `Model not installed. Run: ollama pull ${draft.selectedModel || 'qwen3:8b'}. Available: ${installedModels}`}
                 </div>
               )}
 

@@ -17,6 +17,11 @@ function defaultModelForProvider(providerId: string): string {
   return 'qwen3:8b';
 }
 
+interface LocalModelStatus {
+  ollamaInstalled: boolean;
+  ollamaModels: string[];
+}
+
 export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupScreenProps) {
   const [draft, setDraft] = useState<AppSettings>({
     ...DEFAULT_SETTINGS,
@@ -26,17 +31,22 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
     selectedModel: settings.selectedModel || 'qwen3:8b',
     beginnerMode: settings.beginnerMode ?? true,
   });
-  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null);
+  const [localStatus, setLocalStatus] = useState<LocalModelStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/local-llm/status')
       .then((response) => response.json())
       .then((status) => {
-        if (!cancelled) setOllamaInstalled(Boolean(status.ollamaInstalled));
+        if (!cancelled) {
+          setLocalStatus({
+            ollamaInstalled: Boolean(status.ollamaInstalled ?? status.ollama?.installed),
+            ollamaModels: status.ollamaModels || status.ollama?.modelNames || [],
+          });
+        }
       })
       .catch(() => {
-        if (!cancelled) setOllamaInstalled(null);
+        if (!cancelled) setLocalStatus(null);
       });
     return () => {
       cancelled = true;
@@ -44,6 +54,12 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
   }, []);
 
   const isValid = draft.projectFolder.trim();
+  const localModelInstalled = Boolean(localStatus?.ollamaModels.some((model) => {
+    const current = draft.selectedModel.toLowerCase();
+    const installed = model.toLowerCase();
+    return installed === current || (!current.includes(':') && installed.startsWith(`${current}:`));
+  }));
+  const installedModels = localStatus?.ollamaModels.length ? localStatus.ollamaModels.join(', ') : 'none';
 
   return (
     <div className="setup-screen">
@@ -129,7 +145,7 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
           </span>
         </div>
 
-        {draft.selectedProviderId === 'local-ollama' && ollamaInstalled === false && (
+        {draft.selectedProviderId === 'local-ollama' && localStatus?.ollamaInstalled === false && (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -167,6 +183,21 @@ export default function SetupScreen({ settings, onSave, onBrowseFolder }: SetupS
                 Use an API instead
               </button>
             </div>
+          </div>
+        )}
+
+        {draft.selectedProviderId === 'local-ollama' && localStatus?.ollamaInstalled && (
+          <div style={{
+            padding: '10px 12px',
+            background: localModelInstalled ? 'rgba(52, 211, 153, 0.08)' : 'rgba(255, 203, 56, 0.08)',
+            border: localModelInstalled ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(255, 203, 56, 0.22)',
+            borderRadius: '8px',
+            fontSize: '11px',
+            color: localModelInstalled ? 'var(--color-success)' : '#FFCB38',
+          }}>
+            {localModelInstalled
+              ? `Local model installed: ${draft.selectedModel}. Available: ${installedModels}`
+              : `Model not installed. Run: ollama pull ${draft.selectedModel || 'qwen3:8b'}. Available: ${installedModels}`}
           </div>
         )}
 

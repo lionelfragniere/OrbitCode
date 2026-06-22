@@ -40,6 +40,13 @@ const MIME_TYPES: Record<string, string> = {
   '.csv': 'text/csv',
 };
 
+function isInside(root: string, target: string): boolean {
+  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  const r = normalize(root);
+  const t = normalize(target);
+  return t === r || t.startsWith(`${r}/`);
+}
+
 export async function GET(request: NextRequest) {
   const projectFolder = request.nextUrl.searchParams.get('projectFolder');
   const filePath = request.nextUrl.searchParams.get('filePath');
@@ -48,9 +55,12 @@ export async function GET(request: NextRequest) {
     return new Response('projectFolder and filePath required', { status: 400 });
   }
 
+  const requestedPath = filePath.replace(/^[/\\]+/, '');
+
   // Prevent path traversal
-  const resolved = path.resolve(projectFolder, filePath);
-  if (!resolved.startsWith(path.resolve(projectFolder))) {
+  const projectRoot = path.resolve(projectFolder);
+  const resolved = path.resolve(projectRoot, requestedPath);
+  if (!isInside(projectRoot, resolved)) {
     return new Response('Forbidden', { status: 403 });
   }
 
@@ -62,8 +72,9 @@ export async function GET(request: NextRequest) {
   } catch {
     // Fallback: If not found at root, try the `public/` directory!
     // Next.js and Vite default to serving from `/public` for root-relative requests.
-    const publicResolved = path.resolve(projectFolder, 'public', filePath.replace(/^\/+/, ''));
-    if (!publicResolved.startsWith(path.resolve(projectFolder, 'public'))) {
+    const publicRoot = path.resolve(projectRoot, 'public');
+    const publicResolved = path.resolve(publicRoot, requestedPath);
+    if (!isInside(publicRoot, publicResolved)) {
       return new Response('Forbidden', { status: 403 });
     }
     
@@ -83,11 +94,10 @@ export async function GET(request: NextRequest) {
       let html = content.toString('utf-8');
       
       // Calculate the base URL for this project's folder
-      const dir = path.dirname(filePath).replace(/\\/g, '/');
-      const baseHref = `/api/preview?projectFolder=${encodeURIComponent(projectFolder)}&filePath=`;
+      const dir = path.dirname(requestedPath).replace(/\\/g, '/');
       
       // Rewrite relative src/href attributes to use our preview API
-      html = rewriteRelativeUrls(html, projectFolder, dir);
+      html = rewriteRelativeUrls(html, projectFolder, dir, new URL(request.url).origin);
       
       return new Response(html, {
         headers: {
@@ -115,11 +125,11 @@ export async function GET(request: NextRequest) {
  * Handles: src="script.js", href="style.css", src="img/logo.png"
  * Does NOT rewrite: absolute URLs (http://, //), data: URIs, or anchors (#)
  */
-function rewriteRelativeUrls(html: string, projectFolder: string, currentDir: string): string {
+function rewriteRelativeUrls(html: string, projectFolder: string, currentDir: string, parentOrigin: string): string {
   const previewBase = `/api/preview?projectFolder=${encodeURIComponent(projectFolder)}&filePath=`;
   
   // Match src="..." and href="..." attributes (but not data:, http:, //, #, {)
-  return html.replace(
+  const rewritten = html.replace(
     /((?:src|href|action|poster)\s*=\s*)(["'])([^"']*?)\2/gi,
     (match, attr, quote, url) => {
       // Skip absolute URLs, data URIs, anchors, template expressions
@@ -147,4 +157,19 @@ function rewriteRelativeUrls(html: string, projectFolder: string, currentDir: st
       return `${attr}${quote}${previewBase}${encodeURIComponent(resolvedPath)}${quote}`;
     }
   );
+
+  const bridge = [
+    '<script>',
+    '(()=>{',
+    'const send=()=>parent.postMessage({type:"orbitcode:preview-location",href:location.href},',
+    JSON.stringify(parentOrigin),
+    ');',
+    'addEventListener("hashchange",send);addEventListener("popstate",send);send();',
+    '})();',
+    '</script>',
+  ].join('');
+
+  return /<\/head>/i.test(rewritten)
+    ? rewritten.replace(/<\/head>/i, `${bridge}</head>`)
+    : `${bridge}${rewritten}`;
 }

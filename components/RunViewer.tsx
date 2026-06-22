@@ -264,8 +264,8 @@ function RunDetailView({ projectFolder, runId, onBack }: { projectFolder: string
 
   useEffect(() => { load(); }, [load]);
 
-  const steps = data?.manifest?.steps || [];
-  const screenshots = data?.screenshots || [];
+  const steps = useMemo(() => data?.manifest?.steps || [], [data?.manifest?.steps]);
+  const screenshots = useMemo(() => data?.screenshots || [], [data?.screenshots]);
   const activeShot = useMemo(() => {
     if (!data) return null;
     if (selectedStep !== null && steps[selectedStep]?.screenshot) return steps[selectedStep].screenshot!;
@@ -407,7 +407,7 @@ function RunDetailView({ projectFolder, runId, onBack }: { projectFolder: string
                         {failedImages.has(s) ? (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-error)', fontSize: 10 }}>broken</div>
                         ) : (
-                          <img src={s} onError={() => setFailedImages(prev => new Set(prev).add(s))} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={s} alt={`Screenshot ${i + 1}`} onError={() => setFailedImages(prev => new Set(prev).add(s))} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         )}
                       </div>
                     ))}

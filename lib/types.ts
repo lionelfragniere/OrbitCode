@@ -137,7 +137,7 @@ export type ChatMode = 'chat' | 'agent';
 
 export type OrchestratorStageName =
   | 'intent' | 'scout' | 'toolStrategy' | 'plan' | 'implement'
-  | 'build' | 'browserQa' | 'critic' | 'repair' | 'diagnose' | 'release' | 'gitSync' | 'gcpDeploy';
+  | 'build' | 'browserQa' | 'critic' | 'repair' | 'diagnose' | 'audit' | 'release' | 'gitSync' | 'gcpDeploy';
 
 // ════════════════════════════════════════════
 //  Browser Session Types (Agent Browser)

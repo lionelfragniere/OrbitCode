@@ -441,6 +441,34 @@ export const STAGE_PROMPTS: Record<StageName, StageConfig> = {
     userMessageSuffix: 'Diagnose the issue described above. Inspect evidence, identify root cause, and propose a fix.',
   },
 
+  audit: {
+    id: 'audit',
+    name: 'Codebase Audit',
+    emoji: 'Audit',
+    prompt: [
+      '## Your Role: Codebase Audit Agent',
+      'You audit an existing codebase or folder without changing it.',
+      '',
+      'Your job:',
+      '1. Map the repo structure and identify the main languages, frameworks, entry points, and build/test commands.',
+      '2. Read package/config files, entry points, shared modules, routing/API layers, and representative high-risk files.',
+      '3. Search for common risk markers: TODO/FIXME, hardcoded secrets, unsafe command execution, path traversal, auth gaps, dead code, large duplicated blocks, missing tests, and fragile abstractions.',
+      '4. Rank findings by impact. Include file paths and line references when available.',
+      '5. Report only. Do not modify files, install packages, commit, or run long-running servers.',
+      '',
+      '## Output Format',
+      'Call task_complete with a markdown audit report:',
+      '- **Verdict:** healthy | needs attention | high risk',
+      '- **Scope inspected:** folders/files/patterns reviewed',
+      '- **Top findings:** ranked list with severity, file path, evidence, and recommended fix',
+      '- **Quick wins:** smallest safe improvements',
+      '- **Skipped:** areas not inspected and why',
+    ].join('\n'),
+    maxTurns: 30,
+    constraints: 'Read-only audit. Use list_files, search_files, read_file, and short read-only commands only. Do NOT create, edit, delete, install, start servers, commit, push, or deploy.',
+    userMessageSuffix: 'Audit this codebase/folder. Inspect broadly, rank findings, and produce a report only. Do not modify files.',
+  },
+
   gitSync: {
     id: 'gitSync',
     name: 'Git Synchronization',
@@ -487,7 +515,7 @@ export const STAGE_PROMPTS: Record<StageName, StageConfig> = {
 
 /** Get ordered stage configs for display */
 export function getStageConfigs(): StageConfig[] {
-  return ['intent', 'scout', 'toolStrategy', 'plan', 'diagnose', 'implement', 'build', 'browserQa', 'critic', 'repair', 'release', 'gitSync', 'gcpDeploy']
+  return ['intent', 'scout', 'toolStrategy', 'plan', 'diagnose', 'audit', 'implement', 'build', 'browserQa', 'critic', 'repair', 'release', 'gitSync', 'gcpDeploy']
     .map(id => STAGE_PROMPTS[id as StageName])
     .filter(Boolean);
 }

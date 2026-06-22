@@ -7,7 +7,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { classifyToolCall, logAudit, type SafetyCheck } from './safety';
 import { executeBrowserTest } from './browserRunner';
 import { registerProcess } from './processRegistry';
@@ -41,8 +41,12 @@ export interface ExecutorEvent {
 
 // Security: prevent path traversal
 function safePath(baseDir: string, relativePath: string): string | null {
-  const resolved = path.resolve(baseDir, relativePath);
-  if (!resolved.startsWith(path.resolve(baseDir))) {
+  const root = path.resolve(baseDir);
+  const resolved = path.resolve(root, relativePath);
+  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  const normalizedRoot = normalize(root);
+  const normalizedTarget = normalize(resolved);
+  if (normalizedTarget !== normalizedRoot && !normalizedTarget.startsWith(`${normalizedRoot}/`)) {
     return null;
   }
   return resolved;

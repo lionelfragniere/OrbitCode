@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Circle, GitBranch, Terminal, Shield, Brain, BarChart3 } from 'lucide-react';
+import { Circle, Terminal, Shield, Brain, BarChart3 } from 'lucide-react';
 import { OpenFile } from '@/lib/types';
 import ModelSelector from './ModelSelector';
 import BranchManager from './BranchManager';

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   CheckCircle, Circle, AlertTriangle, Loader2, FileText, Terminal,
   Search, Trash2, Edit, Eye, FolderOpen, Zap, Shield, XCircle, ChevronDown, Monitor,
   Target, Compass, ClipboardList, Code2, Hammer, SearchCheck, Wrench, Package, GitMerge, CloudUpload,
-  Stethoscope, Globe, Navigation, MousePointer, Type as TypeIcon
+  Stethoscope, Globe
 } from 'lucide-react';
 import { AgentTask, AgentStep, AgentTaskStatus, OrchestratorStageResult, OrchestratorStageName } from '@/lib/types';
 
@@ -25,6 +25,7 @@ const STAGE_META: Record<OrchestratorStageName, { icon: React.ReactNode; label: 
   toolStrategy: { icon: <Wrench size={11} />,        label: 'Strategy',   color: '#0092D1' },
   plan:         { icon: <ClipboardList size={11} />, label: 'Plan',       color: '#7C3AED' },
   diagnose:     { icon: <Stethoscope size={11} />,   label: 'Diagnosis',  color: '#F97316' },
+  audit:        { icon: <SearchCheck size={11} />,   label: 'Audit',      color: '#14B8A6' },
   implement:    { icon: <Code2 size={11} />,         label: 'Build',      color: '#E85C0E' },
   build:        { icon: <Hammer size={11} />,        label: 'Test',       color: '#FFCB38' },
   browserQa:    { icon: <SearchCheck size={11} />,   label: 'Browser',    color: '#3B82F6' },
@@ -357,6 +358,9 @@ function StepRow({ step, isLast }: { step: AgentStep; isLast: boolean }) {
 
 export default function TaskPanel({ task, isRunning, onResume }: TaskPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const taskId = task?.id;
+  const taskCompletedAt = task?.completedAt;
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -364,6 +368,12 @@ export default function TaskPanel({ task, isRunning, onResume }: TaskPanelProps)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [task?.steps?.length]);
+
+  useEffect(() => {
+    if (!taskId || taskCompletedAt) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [taskId, taskCompletedAt]);
 
   if (!task) {
     return (
@@ -386,7 +396,7 @@ export default function TaskPanel({ task, isRunning, onResume }: TaskPanelProps)
 
   const elapsed = task.completedAt
     ? ((task.completedAt - task.startedAt) / 1000).toFixed(1)
-    : ((Date.now() - task.startedAt) / 1000).toFixed(0);
+    : (Math.max(0, now - task.startedAt) / 1000).toFixed(0);
 
   return (
     <div className="task-panel">

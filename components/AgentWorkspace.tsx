@@ -4,12 +4,12 @@ import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from '
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  Send, Terminal, Check, X, Code2, AlertTriangle, Monitor,
+  Send, Check, X, Code2, AlertTriangle,
   Compass, Hammer, ClipboardList, Target, Stethoscope, SearchCheck,
-  Zap, Wrench, Package, Shield, Globe, Navigation, Play, GitMerge, CloudUpload,
+  Zap, Wrench, Package, Globe, GitMerge, CloudUpload,
   ChevronDown, FileText, Edit, FolderOpen, Trash2, Loader2, FileCode, TerminalSquare
 } from 'lucide-react';
-import { ChatMessage, OpenFile, AgentTask, AgentStep, OrchestratorStageName } from '@/lib/types';
+import { ChatMessage, OpenFile, AgentTask, OrchestratorStageName } from '@/lib/types';
 
 // ════════════════════════════════════════════
 //  Types & Props
@@ -41,6 +41,7 @@ const STAGE_META: Record<OrchestratorStageName | string, { icon: React.ReactNode
   toolStrategy: { icon: <Wrench size={14} />, label: 'Strategy', color: '#0092D1' },
   plan: { icon: <ClipboardList size={14} />, label: 'Plan', color: '#7C3AED' },
   diagnose: { icon: <Stethoscope size={14} />, label: 'Diagnosis', color: '#F97316' },
+  audit: { icon: <SearchCheck size={14} />, label: 'Audit', color: '#14B8A6' },
   implement: { icon: <Code2 size={14} />, label: 'Build', color: '#E85C0E' },
   build: { icon: <Hammer size={14} />, label: 'Test', color: '#FFCB38' },
   browserQa: { icon: <SearchCheck size={14} />, label: 'Browser', color: '#3B82F6' },
@@ -50,6 +51,12 @@ const STAGE_META: Record<OrchestratorStageName | string, { icon: React.ReactNode
   gitSync: { icon: <GitMerge size={14} />, label: 'Git Sync', color: '#F472B6' },
   gcpDeploy: { icon: <CloudUpload size={14} />, label: 'Deploy', color: '#3B82F6' },
 };
+
+const STARTER_PROMPTS = [
+  'Audit this project for bugs, broken flows, and over-engineering. Give me the shortest fix list.',
+  'Make the smallest useful improvement, run the checks, and show me what changed.',
+  'Create or update the app, then verify every route in the browser with screenshots.',
+];
 
 // ════════════════════════════════════════════
 //  Utility: detect internal/raw noise in text
@@ -746,6 +753,30 @@ export function AgentWorkspace({
             <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
               Ready to work on this project
             </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+              gap: '8px',
+              width: 'min(680px, 100%)',
+              marginBottom: '16px',
+            }}>
+              {STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  className="agent-btn secondary"
+                  onClick={() => handleSend(prompt)}
+                  style={{
+                    justifyContent: 'flex-start',
+                    whiteSpace: 'normal',
+                    textAlign: 'left',
+                    lineHeight: 1.35,
+                    padding: '10px 12px',
+                  }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
             <div style={{ fontSize: '12px', maxWidth: '380px', lineHeight: '1.6' }}>
               Tell the agent what to build, fix, or explore. Examples:<br />
               <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
@@ -864,6 +895,7 @@ function getStageDescription(stage: string): string {
     toolStrategy: 'planning which tools to use',
     plan: 'creating the implementation plan',
     diagnose: 'investigating the issue',
+    audit: 'auditing the codebase',
     implement: 'writing and modifying code',
     build: 'testing the implementation',
     browserQa: 'testing in the browser',

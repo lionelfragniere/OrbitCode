@@ -55,6 +55,17 @@ When you choose local AI in the UI, OrbitCode suggests Ollama models:
 - `qwen3-coder:30b` as a higher-quality but slower/RAM-heavy option.
 
 Ollama itself is not installed silently. If you choose local AI and Ollama is missing, OrbitCode shows an in-app prompt with an install link and an API-provider alternative.
+Setup and Settings also check `ollama list`, show installed local models, and warn when the selected Ollama model is missing.
+
+## Codebase Audits
+
+Ask the agent to audit or review a codebase, repository, project, or folder to run a read-only audit pipeline. The audit stage scouts the folder, samples important files, searches for risk markers, and writes a ranked report without modifying files.
+
+The Agent workspace also includes quick-start task buttons for common flows: audit, smallest useful improvement, and browser-verified app work.
+
+## Local QA Notes
+
+OrbitCode's project/file APIs are intended to work with arbitrary local folders. File, preview, and reveal endpoints keep requests inside the selected project folder, and project listing only reports Git metadata when the project folder itself is the repository root.
 
 ## Memory
 
@@ -78,6 +89,12 @@ Beginner mode is enabled by default on first run. It:
 - Avoids low-level details unless the user asks for them.
 
 You can change this in Settings.
+
+## Ponytail Mode
+
+OrbitCode includes the Ponytail rules from `DietrichGebert/ponytail` in both chat and agent prompts. The default is full: smallest working change, standard library and native platform first, no speculative abstractions.
+
+Supported request commands include `/ponytail lite`, `/ponytail full`, `/ponytail ultra`, `/ponytail off`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, and `/ponytail-help`.
 
 ## Project Data
 

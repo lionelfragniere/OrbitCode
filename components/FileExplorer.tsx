@@ -172,7 +172,16 @@ function FileNodeComponent({ node, depth, activeFilePath, onSelect, onContextMen
         className={`file-node ${isActive ? 'file-node--active' : ''} ${node.isDirectory ? 'file-node--directory' : ''}`}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
         onContextMenu={(e) => onContextMenu(e, node)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={node.isDirectory ? isOpen : undefined}
         title={node.path}
       >
         {node.isDirectory && (

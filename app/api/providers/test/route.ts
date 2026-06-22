@@ -16,13 +16,21 @@ export async function POST(request: NextRequest) {
       gcpProject: body.gcpProject,
       gcpRegion: body.gcpRegion,
       temperature: 0,
-      maxOutputTokens: 64,
+      maxOutputTokens: 256,
     });
     const text = await generateAiText(
       config,
       [{ role: 'user', content: 'Reply with exactly: OrbitCode provider OK' }],
       'You are a connection test. Keep the response short.',
     );
+    if (!text.trim()) {
+      return NextResponse.json({
+        ok: false,
+        providerKind: config.providerKind,
+        model: config.model,
+        error: 'Provider responded, but produced no visible text. Try a larger max token limit or a non-thinking model.',
+      }, { status: 400 });
+    }
     return NextResponse.json({ ok: true, providerKind: config.providerKind, model: config.model, text });
   } catch (error) {
     return NextResponse.json({

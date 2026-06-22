@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
   const success = controlBrowserSession(action as 'pause' | 'resume' | 'stop');
 
   if (!success) {
+    if (action === 'stop') {
+      return NextResponse.json({ success: true, action, active: false });
+    }
     return NextResponse.json({ error: 'No active browser session' }, { status: 404 });
   }
 

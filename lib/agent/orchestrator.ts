@@ -210,8 +210,17 @@ function isBugFixIntent(intent: string): boolean {
   return patterns.some(p => p.test(lower));
 }
 
+function isAuditIntent(intent: string): boolean {
+  return /\b(audit|review|inspect|analy[sz]e)\b.*\b(codebase|repo|repository|project|folder|source)\b/i.test(intent)
+    || /\b(codebase|repo|repository|project|folder|source)\b.*\b(audit|review|inspection)\b/i.test(intent);
+}
+
 /** Select which stages to run based on complexity and intent keywords */
 function selectStages(complexity: 'simple' | 'moderate' | 'complex', intent: string): StageName[] {
+  if (isAuditIntent(intent)) {
+    return ['intent', 'scout', 'audit'];
+  }
+
   const isBugFix = isBugFixIntent(intent);
   let stages: StageName[] = [];
   
@@ -603,14 +612,14 @@ export async function* runOrchestrator(
     for await (const event of runStage(stageConfig, state, vertexConfig, toolExecutor, projectContext)) {
       yield event;
       
-      // If the stage completed successfully and it was 'diagnose', write its artifact to disk!
-      if (event.type === 'stage_complete' && event.stage === 'diagnose' && state.taskId) {
+      // If the stage produced a report, write its artifact to disk.
+      if (event.type === 'stage_complete' && (event.stage === 'diagnose' || event.stage === 'audit') && state.taskId) {
         try {
             const runFolder = path.join(projectFolder, '.orbitcode', 'runs', state.taskId);
             await fs.mkdir(runFolder, { recursive: true });
             
             // Extract the completed output
-            const dr = state.stages.find(s => s.stage === 'diagnose');
+            const dr = state.stages.find(s => s.stage === event.stage);
             if (dr && dr.output) {
                 await fs.writeFile(path.join(runFolder, 'report.md'), dr.output, 'utf-8');
             }

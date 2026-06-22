@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 interface ProjectInfo {
   name: string;
@@ -17,10 +17,15 @@ interface ProjectInfo {
   fileCount: number;
 }
 
-function runGitSilent(args: string, cwd: string): string | null {
+function runGitSilent(args: string[], cwd: string): string | null {
   try {
-    return execSync(`git ${args}`, { cwd, encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, { cwd, encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch { return null; }
+}
+
+function samePath(a: string, b: string): boolean {
+  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  return normalize(a) === normalize(b);
 }
 
 // GET: List projects in workspace
@@ -46,9 +51,11 @@ export async function GET(request: NextRequest) {
       const projectPath = path.join(workspacePath, entry.name);
       const stat = await fs.stat(projectPath);
 
-      // Check if it's a git repo
-      const branch = runGitSilent('rev-parse --abbrev-ref HEAD', projectPath);
-      const remote = runGitSilent('remote get-url origin', projectPath);
+      // Check if this folder is the repo root. Git otherwise walks up to parent repos.
+      const gitRoot = runGitSilent(['rev-parse', '--show-toplevel'], projectPath);
+      const isGitRepo = !!gitRoot && samePath(gitRoot, projectPath);
+      const branch = isGitRepo ? runGitSilent(['rev-parse', '--abbrev-ref', 'HEAD'], projectPath) : null;
+      const remote = isGitRepo ? runGitSilent(['remote', 'get-url', 'origin'], projectPath) : null;
 
       // Count files (shallow)
       let fileCount = 0;
@@ -60,7 +67,7 @@ export async function GET(request: NextRequest) {
       projects.push({
         name: entry.name,
         path: projectPath.replace(/\\/g, '/'),
-        isGitRepo: branch !== null,
+        isGitRepo,
         branch: branch || undefined,
         remote: remote || undefined,
         lastModified: stat.mtimeMs,
@@ -116,16 +123,21 @@ export async function POST(request: NextRequest) {
       `# ${safeName}\n\nCreated with OrbitCode.\n`,
       'utf-8'
     );
+    await fs.writeFile(
+      path.join(projectPath, '.gitignore'),
+      ['.orbitcode/', 'node_modules/', '.env*', ''].join('\n'),
+      'utf-8'
+    );
 
     // Initialize git if requested
     if (initGit !== false) {
-      runGitSilent('init', projectPath);
-      runGitSilent('add .', projectPath);
-      runGitSilent('commit -m "Initial commit — created with OrbitCode"', projectPath);
+      runGitSilent(['init'], projectPath);
+      runGitSilent(['add', '.'], projectPath);
+      runGitSilent(['commit', '-m', 'Initial commit - created with OrbitCode'], projectPath);
 
       // Add remote if provided
       if (gitRemote) {
-        runGitSilent(`remote add origin ${gitRemote}`, projectPath);
+        runGitSilent(['remote', 'add', 'origin', gitRemote], projectPath);
       }
     }
 

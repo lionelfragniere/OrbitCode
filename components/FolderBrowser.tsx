@@ -32,12 +32,7 @@ export default function FolderBrowser({ currentPath, onSelect, onClose }: Folder
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'locations' | 'browse'>('locations');
 
-  // Load initial locations
-  useEffect(() => {
-    fetchLocations();
-  }, []);
-
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       const res = await fetch('/api/browse');
       const data = await res.json();
@@ -45,7 +40,12 @@ export default function FolderBrowser({ currentPath, onSelect, onClose }: Folder
     } catch (err) {
       console.error('Failed to load locations:', err);
     }
-  };
+  }, []);
+
+  // Load initial locations
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
 
   const browseTo = useCallback(async (dirPath: string) => {
     setLoading(true);

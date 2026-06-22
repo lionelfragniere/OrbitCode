@@ -5,19 +5,26 @@ import { resolveModelConfig } from '@/lib/ai/providerStore';
 import { inspectRepoState } from '@/lib/git/gitInspect';
 import { evaluateAction, executeAction } from '@/lib/git/gitStateEngine';
 import type { GitAction } from '@/lib/types';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
-function runGit(args: string, cwd: string): { success: boolean; output: string } {
+function runGit(args: string[], cwd: string): { success: boolean; output: string } {
   try {
-    const output = execSync(`git ${args}`, {
+    const output = execFileSync('git', args, {
       cwd, encoding: 'utf-8', timeout: 30000,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
     });
     return { success: true, output: output.trim() };
   } catch (error) {
     const msg = error instanceof Error ? (error as NodeJS.ErrnoException & { stderr?: string }).stderr || error.message : 'Git error';
     return { success: false, output: typeof msg === 'string' ? msg.trim() : String(msg) };
   }
+}
+
+function safeGitRef(value: string): string | null {
+  if (!value || value.startsWith('-') || !/^[A-Za-z0-9._/@{}^~:+-]+$/.test(value)) return null;
+  return value;
 }
 
 // GET: Git status info, branches, diff, full state
@@ -34,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   // Branch listing
   if (action === 'branches') {
-    const result = runGit('branch -a', cwd);
+    const result = runGit(['branch', '-a'], cwd);
     if (!result.success) return NextResponse.json({ branches: [] });
     const branches = result.output.split('\n').filter(Boolean).map((line) => {
       const current = line.startsWith('*');
@@ -54,9 +61,10 @@ export async function GET(request: NextRequest) {
 
   // Diff
   if (action === 'diff') {
-    const diffTarget = request.nextUrl.searchParams.get('target') || 'HEAD';
-    const result = runGit(`diff ${diffTarget}`, cwd);
-    const stagedResult = runGit('diff --cached', cwd);
+    const diffTarget = safeGitRef(request.nextUrl.searchParams.get('target') || 'HEAD');
+    if (!diffTarget) return NextResponse.json({ error: 'Invalid diff target' }, { status: 400 });
+    const result = runGit(['diff', diffTarget], cwd);
+    const stagedResult = runGit(['diff', '--cached'], cwd);
     return NextResponse.json({
       diff: result.success ? result.output : '',
       staged: stagedResult.success ? stagedResult.output : '',
@@ -65,11 +73,13 @@ export async function GET(request: NextRequest) {
 
   // PR summary generation
   if (action === 'pr-info') {
-    const baseBranch = request.nextUrl.searchParams.get('base') || 'main';
-    const branch = runGit('rev-parse --abbrev-ref HEAD', cwd);
-    const log = runGit(`log ${baseBranch}..HEAD --oneline`, cwd);
-    const diffstat = runGit(`diff --stat ${baseBranch}..HEAD`, cwd);
-    const diff = runGit(`diff ${baseBranch}..HEAD`, cwd);
+    const baseBranch = safeGitRef(request.nextUrl.searchParams.get('base') || 'main');
+    if (!baseBranch) return NextResponse.json({ error: 'Invalid base branch' }, { status: 400 });
+    const range = `${baseBranch}..HEAD`;
+    const branch = runGit(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
+    const log = runGit(['log', range, '--oneline'], cwd);
+    const diffstat = runGit(['diff', '--stat', range], cwd);
+    const diff = runGit(['diff', range], cwd);
     return NextResponse.json({
       branch: branch.success ? branch.output : '—',
       base: baseBranch,
@@ -85,7 +95,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ isRepo: false, error: state.inspectionError || 'Not a git repository' });
   }
 
-  const log = runGit('log --oneline -5', cwd);
+  const log = runGit(['log', '--oneline', '-5'], cwd);
 
   return NextResponse.json({
     isRepo: true,
@@ -187,32 +197,32 @@ export async function POST(request: NextRequest) {
   let result;
   switch (action) {
     case 'add':
-      result = runGit(`add ${files ? files.join(' ') : '.'}`, cwd);
+      result = runGit(['add', '--', ...(Array.isArray(files) && files.length ? files.map(String) : ['.'])], cwd);
       break;
     case 'commit':
       if (!message) return NextResponse.json({ error: 'message required' }, { status: 400 });
-      runGit('add -A', cwd);
-      result = runGit(`commit -m "${message.replace(/"/g, '\\"')}"`, cwd);
+      runGit(['add', '-A', '--', '.'], cwd);
+      result = runGit(['commit', '-m', String(message)], cwd);
       break;
     case 'set-remote': {
       if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 });
-      runGit('remote remove origin', cwd);
-      result = runGit(`remote add origin ${url}`, cwd);
+      runGit(['remote', 'remove', 'origin'], cwd);
+      result = runGit(['remote', 'add', 'origin', String(url)], cwd);
       if (result.success) {
-        const branchResult = runGit('rev-parse --abbrev-ref HEAD', cwd);
+        const branchResult = runGit(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
         if (branchResult.success) {
-          runGit(`fetch origin`, cwd);
+          runGit(['fetch', 'origin'], cwd);
         }
       }
       break;
     }
     case 'branches':
-      result = runGit('branch -a', cwd);
+      result = runGit(['branch', '-a'], cwd);
       break;
     case 'generate-commit-msg': {
       // AI-powered commit message generation using the selected provider.
-      const diffResult = runGit('diff HEAD', cwd);
-      const statusResult = runGit('status --porcelain', cwd);
+      const diffResult = runGit(['diff', 'HEAD'], cwd);
+      const statusResult = runGit(['status', '--porcelain'], cwd);
       if (!diffResult.output && !statusResult.output) {
         return NextResponse.json({ success: false, output: 'No changes to describe' });
       }

@@ -5,8 +5,12 @@ import path from 'path';
 
 // Security: prevent path traversal
 function sanitizePath(basePath: string, requestedPath: string): string | null {
-  const resolved = path.resolve(basePath, requestedPath);
-  if (!resolved.startsWith(path.resolve(basePath))) {
+  const root = path.resolve(basePath);
+  const resolved = path.resolve(root, requestedPath);
+  const normalize = (p: string) => path.resolve(p).replace(/\\/g, '/').toLowerCase();
+  const normalizedRoot = normalize(root);
+  const normalizedTarget = normalize(resolved);
+  if (normalizedTarget !== normalizedRoot && !normalizedTarget.startsWith(`${normalizedRoot}/`)) {
     return null;
   }
   return resolved;
@@ -97,8 +101,9 @@ export async function GET(request: NextRequest) {
 
   // Otherwise, return file tree
   try {
-    await fs.access(projectFolder);
-    const tree = await buildFileTree(projectFolder, projectFolder);
+    const projectRoot = path.resolve(projectFolder);
+    await fs.access(projectRoot);
+    const tree = await buildFileTree(projectRoot, projectRoot);
     return NextResponse.json({ tree });
   } catch {
     return NextResponse.json({ error: 'Project folder not accessible' }, { status: 404 });

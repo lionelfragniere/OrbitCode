@@ -9,6 +9,7 @@
 import { GoogleGenAI, type Content, type Part, type FunctionCall, type GenerateContentResponse } from '@google/genai';
 import { ALL_TOOLS } from './tools';
 import { ORBITCODE_POLICY } from './policy';
+import { PONYTAIL_SYSTEM_INSTRUCTION } from './ponytail';
 import { executeAgentWithProvider } from '@/lib/ai/agentRuntime';
 import { resolveModelConfig } from '@/lib/ai/providerStore';
 import type { AiModelConfig } from '@/lib/ai/types';
@@ -147,6 +148,8 @@ export function buildAgentSystemInstruction(projectContext?: string): string {
     '- Do not add old corporate logos or company branding unless the user explicitly asks for it.',
     '- Use a personal, local-tool feel: calm dark surfaces, mint/sky/amber accents, clear spacing, and compact controls.',
     '- For generated apps, match the project subject and audience instead of forcing a house brand.',
+    '',
+    PONYTAIL_SYSTEM_INSTRUCTION,
     '',
     ORBITCODE_POLICY,
     '',

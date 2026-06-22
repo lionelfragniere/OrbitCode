@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Globe, X, RefreshCw, ExternalLink, ChevronDown } from 'lucide-react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { Globe, X, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface PreviewPanelProps {
   isOpen: boolean;
@@ -11,25 +11,51 @@ interface PreviewPanelProps {
 }
 
 export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFile }: PreviewPanelProps) {
-  const [url, setUrl] = useState('');
   const [key, setKey] = useState(0); // Force iframe reload
+  const [locationState, setLocationState] = useState<{ sourceFile: string; href: string; filePath: string } | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    if (isOpen && projectFolder && previewFile) {
-      const previewUrl = `/api/preview?projectFolder=${encodeURIComponent(projectFolder)}&filePath=${encodeURIComponent(previewFile)}`;
-      setUrl(previewUrl);
-    }
-  }, [isOpen, projectFolder, previewFile]);
-
   const isImage = /\.(png|jpe?g|webp|gif|svg)$/i.test(previewFile);
+  const url = isOpen && projectFolder && previewFile
+    ? `/api/preview?projectFolder=${encodeURIComponent(projectFolder)}&filePath=${encodeURIComponent(previewFile)}`
+    : '';
+  const activeLocation = locationState?.sourceFile === previewFile ? locationState : null;
+  const displayFile = activeLocation?.filePath || previewFile;
+  const currentUrl = activeLocation?.href || url;
+
+  const applyLocation = useCallback((href: string) => {
+    try {
+      const nextUrl = new URL(href, window.location.href);
+      if (nextUrl.origin !== window.location.origin || nextUrl.pathname !== '/api/preview') return;
+      const filePath = nextUrl.searchParams.get('filePath');
+      setLocationState({ sourceFile: previewFile, href: nextUrl.href, filePath: filePath || previewFile });
+    } catch {}
+  }, [previewFile]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const data = event.data as { type?: string; href?: string } | null;
+      if (data?.type !== 'orbitcode:preview-location' || typeof data.href !== 'string') return;
+      applyLocation(data.href);
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [applyLocation]);
 
   const handleRefresh = () => {
     setKey((k) => k + 1);
   };
 
   const handleOpenExternal = () => {
-    if (url) window.open(url, '_blank');
+    if (currentUrl || url) window.open(currentUrl || url, '_blank');
+  };
+
+  const handleFrameLoad = () => {
+    try {
+      const href = iframeRef.current?.contentWindow?.location.href;
+      if (href) applyLocation(href);
+    } catch {}
   };
 
   if (!isOpen) return null;
@@ -43,7 +69,7 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
           Preview
         </div>
         <div className="preview-header__url">
-          {previewFile}
+          {displayFile}
         </div>
         <div className="preview-header__actions">
           <button className="icon-btn" onClick={handleRefresh} title="Refresh">
@@ -84,8 +110,9 @@ export default function PreviewPanel({ isOpen, onClose, projectFolder, previewFi
               ref={iframeRef}
               src={url}
               className="preview-iframe"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              sandbox="allow-scripts allow-forms allow-popups"
               title="Preview"
+              onLoad={handleFrameLoad}
             />
           )
         ) : (

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Globe, Play, Pause, Square, ExternalLink, Camera,
-  AlertTriangle, CheckCircle, Loader2, XCircle, Eye, Image as ImageIcon,
+  Globe, Play, Camera,
+  Loader2, Eye, Image as ImageIcon,
   MousePointer, Type, Navigation, Clock, RefreshCw, FileText
 } from 'lucide-react';
 import type { BrowserSessionState, BrowserStep } from '@/lib/types';
@@ -62,7 +62,6 @@ export default function AgentBrowserPanel({
   // Fetch history if not live
   useEffect(() => {
     if (!isLive && runId) {
-      setActiveMainTab('screenshot'); // Default to screenshot wrapper
       setLoadingHistory(true);
       fetch(`/api/runs?projectFolder=${encodeURIComponent(projectFolder)}&runId=${encodeURIComponent(runId)}`)
         .then(r => r.json())
@@ -76,8 +75,6 @@ export default function AgentBrowserPanel({
           setLoadingHistory(false);
         })
         .catch(() => setLoadingHistory(false));
-    } else {
-      setActiveMainTab('screenshot');
     }
   }, [runId, isLive, projectFolder]);
 
@@ -88,16 +85,11 @@ export default function AgentBrowserPanel({
     : (historyData?.manifest?.currentUrl || 'about:blank');
   
   const browserSteps = isLive ? liveBrowserSteps : (historyData?.manifest?.steps || []);
-  const currentStepInfo = isLive ? (liveSessionState?.currentStep || browserSteps[browserSteps.length - 1]?.description || 'Waiting...') : 'Run Completed';
-  
   const allScreenshots = isLive 
     ? Array.from(new Set([...browserSteps.map(s => s.screenshot).filter(Boolean), ...(liveSessionState?.screenshots || [])]))
     : (historyData?.screenshots || []);
-    
-  const lastScreenshot = allScreenshots[allScreenshots.length - 1] || null;
 
   const logs = isLive ? (liveSessionState?.logs || []) : (historyData?.rawLogs?.split('\n') || []);
-  const errors = isLive ? (liveSessionState?.errors || []) : []; // Extracted if possible
 
   // Auto-scroll logic
   useEffect(() => { if (stepsRef.current) stepsRef.current.scrollTop = stepsRef.current.scrollHeight; }, [browserSteps.length]);

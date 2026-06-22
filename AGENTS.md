@@ -19,7 +19,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `lib/ai/agentRuntime.ts` — Provider-neutral agent loop
 - `lib/agent/vertex.ts` — Compatibility wrapper around provider-neutral execution
 - `lib/agent/orchestrator.ts` — Multi-stage orchestrator (selective stage pipeline)
-- `lib/agent/stages.ts` — Stage-specific system prompts and turn budgets
+- `lib/agent/stages.ts` — Stage-specific system prompts and turn budgets, including read-only codebase audits
+- `lib/agent/ponytail.ts` — Built-in Ponytail prompt rules and report-command detection
 - `lib/agent/executor.ts` — Tool implementations (filesystem, terminal, search)
 - `lib/agent/safety.ts` — Command safety classification + audit log
 - `app/api/agent/route.ts` — Agent API endpoint (SSE streaming, single + orchestrated)
@@ -80,6 +81,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Changelog
 
+- 2026-06-22: Added built-in Ponytail prompt rules for chat and agent mode, including request commands for Ponytail mode, review, audit, debt, gain, and help.
+- 2026-06-22: Added Ollama local model availability checks in setup/settings and a read-only codebase audit stage for large existing folders.
+- 2026-06-22: QA/polish pass: added Agent quick-start task buttons, made browser-session stop idempotent, fixed nested project Git detection, hardened file/preview/reveal path handling, and verified with a `.orbitcode/qa-workspace` smoke project.
+- 2026-06-22: Representative project smoke test fixed IDE project-open file-tree loading and preview handling for root-style public asset paths.
+- 2026-06-22: Human-style GUI smoke test fixed manual HTML file preview targeting so explorer-opened pages update the preview panel.
+- 2026-06-22: Monthey crop-intel GUI smoke test added iframe navigation awareness to PreviewPanel and keyboard/ARIA activation to file tree rows.
+- 2026-06-22: Monthey GUI hardening added keyboard/ARIA activation to dashboard project cards and removed same-origin preview sandboxing via a minimal postMessage location bridge.
+- 2026-06-22: Secondary IDE panel smoke test restored visible Audit Log rendering and made the Agent Browser toolbar button open/focus the live browser tab.
+- 2026-06-22: Agent/provider smoke test made provider connection tests reject empty model output, hardened executor/git path handling, and added `.orbitcode/` to new project git ignores.
 - 2026-05-16: Completed OrbitCode adaptation, removed legacy corporate branding, added beginner mode, introduced pluggable provider architecture, added MemPalace-backed memory service, moved storage to `.orbitcode` with legacy local-data fallback, and replaced the launcher with a local-first single-file Windows script.
 - 2026-05-16: Launcher now silently installs `uv` and MemPalace when missing; Ollama remains opt-in with UI prompts because local model downloads can be large.
 

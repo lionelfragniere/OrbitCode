@@ -353,6 +353,15 @@ export default function Dashboard({
                       key={rp.path}
                       className="folder-browser__location"
                       onClick={() => onOpenProject(rp.path, rp.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onOpenProject(rp.path, rp.name);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      title={`Open ${rp.name}`}
                       style={{ borderRadius: '8px', padding: '10px 16px' }}
                     >
                       <Folder size={16} style={{ color: '#F8EA44', flexShrink: 0 }} />
@@ -410,6 +419,15 @@ export default function Dashboard({
                       key={project.path}
                       className="setup-card"
                       onClick={() => onOpenProject(project.path, project.name)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onOpenProject(project.path, project.name);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      title={`Open ${project.name}`}
                       style={{
                         margin: 0,
                         padding: '16px',

@@ -6,6 +6,7 @@
  * Model configurable via GEMINI_MODEL env var (default: gemini-2.5-flash).
  */
 import { GoogleGenAI } from '@google/genai';
+import { PONYTAIL_SYSTEM_INSTRUCTION } from '@/lib/agent/ponytail';
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 
@@ -60,7 +61,7 @@ export function buildSystemInstruction(customInstruction: string, editorContext?
   language?: string;
   selectedText?: string;
 }): string {
-  let instruction = customInstruction;
+  let instruction = `${customInstruction}\n\n${PONYTAIL_SYSTEM_INSTRUCTION}`;
 
   if (editorContext) {
     instruction += '\n\n--- Current Context ---';

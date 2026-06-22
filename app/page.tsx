@@ -270,6 +270,14 @@ export default function Home() {
       setMessages([]);
     }
 
+    try {
+      const res = await fetch(`/api/files?projectFolder=${encodeURIComponent(projPath)}`);
+      const data = await res.json();
+      setFileTree(data.tree || []);
+    } catch {
+      setFileTree([]);
+    }
+
     // Track as recent
     await fetch('/api/config', {
       method: 'POST',
@@ -370,6 +378,7 @@ export default function Home() {
         };
         setOpenFiles((prev) => [...prev, newFile]);
         setActiveFilePath(node.path);
+        if (/\.html?$/i.test(node.path)) setPreviewFile(node.path);
       }
     } catch {
       showToast('Failed to open file', 'error');
@@ -1244,7 +1253,7 @@ export default function Home() {
               }} title="System Check (Preflight)">
                 <ShieldCheck size={16} />
               </button>
-              <button className="icon-btn" onClick={() => setShowAuditLog(!showAuditLog)} title="Audit Log">
+              <button className={`icon-btn ${showAuditLog ? 'icon-btn--active' : ''}`} onClick={() => setShowAuditLog(!showAuditLog)} title="Audit Log">
                 <Shield size={16} />
               </button>
             </>
@@ -1261,7 +1270,21 @@ export default function Home() {
             <MessageSquare size={16} />
           </button>
           {!config.beginnerMode && (
-            <button className={`icon-btn ${showBrowserPanel ? 'icon-btn--active' : ''}`} onClick={() => setShowBrowserPanel(!showBrowserPanel)} title="Agent Browser">
+            <button className={`icon-btn ${showBrowserPanel ? 'icon-btn--active' : ''}`} onClick={() => {
+              if (showBrowserPanel) {
+                setShowBrowserPanel(false);
+                if (activeFilePath === 'browser://live') setActiveFilePath('agent://workspace');
+                return;
+              }
+              setShowBrowserPanel(true);
+              setOpenFiles((prev) => {
+                if (!prev.find(f => f.isBrowser && !f.runId)) {
+                  return [...prev, { path: 'browser://live', name: 'Browser', content: '', language: 'browser', isDirty: false, isBrowser: true }];
+                }
+                return prev;
+              });
+              setActiveFilePath('browser://live');
+            }} title="Agent Browser">
               <Globe size={16} style={showBrowserPanel ? { color: '#4EC3E0' } : {}} />
             </button>
           )}
@@ -1300,6 +1323,11 @@ export default function Home() {
               <GitPanel projectFolder={projectPath} onToast={showToast} />
             )}
           </div>
+        )}
+        {showAuditLog && (
+          <aside style={{ width: 360, maxWidth: '35vw', flexShrink: 0, borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-primary)' }}>
+            <AuditLogViewer projectPath={projectPath} />
+          </aside>
         )}
         <div className="editor-area" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           <EditorTabs openFiles={openFiles} activeFilePath={activeFilePath} onSelect={setActiveFilePath} onClose={closeFile} onSave={saveFile} />
