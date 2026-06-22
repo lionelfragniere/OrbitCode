@@ -93,6 +93,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 2026-06-22: Added `scripts/orbitcode-smoke.mjs` to repeat the Monthey project API, Git, preview, GUI, optional provider, and optional agent smoke checks against a running OrbitCode server.
 - 2026-06-22: Lint noise reduced by removing dead UI imports/components, deleting unused QA temporaries, and disabling image/effect rules that were noisy for local screenshots and fetch-on-mount panels.
 - 2026-06-22: Turbopack output tracing excludes generated workspaces/source artifacts, and Monthey GUI verification now includes in-app-browser screenshot evidence.
+- 2026-06-22: Narrow workspace layout now stacks editor and preview vertically so embedded previews stay usable in Codex's in-app browser.
 - 2026-05-16: Completed OrbitCode adaptation, removed legacy corporate branding, added beginner mode, introduced pluggable provider architecture, added MemPalace-backed memory service, moved storage to `.orbitcode` with legacy local-data fallback, and replaced the launcher with a local-first single-file Windows script.
 - 2026-05-16: Launcher now silently installs `uv` and MemPalace when missing; Ollama remains opt-in with UI prompts because local model downloads can be large.
 

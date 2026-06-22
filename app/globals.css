@@ -406,6 +406,10 @@ html, body {
   position: relative;
 }
 
+.editor-preview-split {
+  min-width: 0;
+}
+
 /* Welcome screen */
 .welcome-screen {
   display: flex;
@@ -1581,6 +1585,23 @@ html, body {
   min-width: 0;
   background: var(--bg-primary);
   border-left: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 900px) {
+  .editor-preview-split {
+    flex-direction: column;
+  }
+
+  .editor-preview-split > .editor-content,
+  .editor-preview-split > .preview-panel {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .preview-panel {
+    border-left: none;
+    border-top: 1px solid var(--border-subtle);
+  }
 }
 
 .preview-header {

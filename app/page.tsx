@@ -1324,7 +1324,7 @@ export default function Home() {
         )}
         <div className="editor-area" style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           <EditorTabs openFiles={openFiles} activeFilePath={activeFilePath} onSelect={setActiveFilePath} onClose={closeFile} onSave={saveFile} />
-          <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <div className="editor-preview-split" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <div className="editor-content" style={{ flex: 1, minWidth: 0, display: 'flex' }}>
               {/* 
                 We keep the AgentWorkspace perpetually mounted using display: none 
